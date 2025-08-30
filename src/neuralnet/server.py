@@ -278,6 +278,120 @@ async def get_match_events(match_id: str) -> dict:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/teams/{team_id}")
+async def get_team_details(team_id: str) -> dict:
+    """Get detailed information about a specific team."""
+    try:
+        team = orchestrator.world.get_team_by_id(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+        
+        return {
+            "id": team.id,
+            "name": team.name,
+            "league": team.league,
+            "team_morale": team.team_morale,
+            "tactical_familiarity": team.tactical_familiarity,
+            "matches_played": team.matches_played,
+            "wins": team.wins,
+            "draws": team.draws,
+            "losses": team.losses,
+            "goals_for": team.goals_for,
+            "goals_against": team.goals_against,
+            "goal_difference": team.goal_difference,
+            "points": team.points,
+            "players": [
+                {
+                    "id": player.id,
+                    "name": player.name,
+                    "position": player.position.value,
+                    "age": player.age,
+                    "overall_rating": player.overall_rating,
+                    "pace": player.pace,
+                    "shooting": player.shooting,
+                    "passing": player.passing,
+                    "defending": player.defending,
+                    "physicality": player.physicality,
+                    "form": player.form,
+                    "morale": player.morale,
+                    "fitness": player.fitness,
+                    "injured": player.injured,
+                    "yellow_cards": player.yellow_cards,
+                    "red_cards": player.red_cards
+                }
+                for player in team.players
+            ]
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/teams/{team_id}/matches")
+async def get_team_matches(team_id: str, limit: int = 10) -> dict:
+    """Get recent matches for a specific team."""
+    try:
+        team = orchestrator.world.get_team_by_id(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+        
+        # Get all completed matches and filter for this team
+        all_matches = orchestrator.get_completed_matches(limit=100)  # Get more to filter
+        team_matches = []
+        
+        for match in all_matches:
+            home_team = orchestrator.world.get_team_by_id(match.home_team_id)
+            away_team = orchestrator.world.get_team_by_id(match.away_team_id)
+            
+            if home_team and away_team and (match.home_team_id == team_id or match.away_team_id == team_id):
+                team_matches.append({
+                    "id": match.id,
+                    "home_team": home_team.name,
+                    "away_team": away_team.name,
+                    "league": match.league,
+                    "matchday": match.matchday,
+                    "season": match.season,
+                    "home_score": match.home_score,
+                    "away_score": match.away_score,
+                    "finished": match.finished,
+                    "is_home": match.home_team_id == team_id
+                })
+                
+                if len(team_matches) >= limit:
+                    break
+        
+        return {
+            "team_id": team_id,
+            "team_name": team.name,
+            "matches": team_matches
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/teams/lookup/{team_name}")
+async def lookup_team_by_name(team_name: str) -> dict:
+    """Get team ID by team name."""
+    try:
+        # Search through all teams to find matching name
+        for team_id, team in orchestrator.world.teams.items():
+            if team.name.lower() == team_name.lower().replace('_', ' '):
+                return {
+                    "team_id": team_id,
+                    "team_name": team.name,
+                    "league": team.league
+                }
+        
+        raise HTTPException(status_code=404, detail="Team not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Health check endpoint
 @app.get("/health")
 async def health_check() -> dict:

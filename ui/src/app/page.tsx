@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { WorldState, MatchEvent, AdvanceResponse, League, CompletedMatch, MatchDetail, MatchEventDetail } from '@/types/api';
+import TeamLink from '@/components/TeamLink';
 
 export default function Home() {
   const [worldState, setWorldState] = useState<WorldState | null>(null);
@@ -203,7 +204,7 @@ export default function Home() {
                 {currentLeague.table.map((team) => (
                   <tr key={team.position}>
                     <td className="number">{team.position}</td>
-                    <td>{team.team}</td>
+                    <td><TeamLink teamName={team.team} /></td>
                     <td className="number">{team.played}</td>
                     <td className="number">{team.won}</td>
                     <td className="number">{team.drawn}</td>
@@ -228,7 +229,7 @@ export default function Home() {
               worldState.next_fixtures.map((fixture) => (
                 <div key={fixture.id} className="fixture">
                   <div className="fixture-teams">
-                    {fixture.home_team} vs {fixture.away_team}
+                    <TeamLink teamName={fixture.home_team} /> vs <TeamLink teamName={fixture.away_team} />
                   </div>
                   <div className="fixture-info">
                     {fixture.league} - MD{fixture.matchday}
@@ -266,7 +267,7 @@ export default function Home() {
                 ← Back to Matches
               </button>
               <h3>
-                {selectedMatch.match.home_team} {selectedMatch.match.home_score} - {selectedMatch.match.away_score} {selectedMatch.match.away_team}
+                <TeamLink teamName={selectedMatch.match.home_team} /> {selectedMatch.match.home_score} - {selectedMatch.match.away_score} <TeamLink teamName={selectedMatch.match.away_team} />
               </h3>
               <div className="match-info">
                 {selectedMatch.match.league} - Matchday {selectedMatch.match.matchday} (Season {selectedMatch.match.season})
@@ -299,7 +300,7 @@ export default function Home() {
                   onClick={() => loadMatchDetail(match.id)}
                 >
                   <div className="match-teams">
-                    {match.home_team} {match.home_score} - {match.away_score} {match.away_team}
+                    <TeamLink teamName={match.home_team} /> {match.home_score} - {match.away_score} <TeamLink teamName={match.away_team} />
                   </div>
                   <div className="match-info">
                     {match.league} - MD{match.matchday} (S{match.season})
