@@ -27,6 +27,41 @@ export interface Fixture {
   matchday: number;
 }
 
+export interface CompletedMatch {
+  id: string;
+  home_team: string;
+  away_team: string;
+  league: string;
+  matchday: number;
+  season: number;
+  home_score: number;
+  away_score: number;
+  finished: boolean;
+}
+
+export interface MatchEventDetail {
+  event_type: string;
+  timestamp: string;
+  minute?: number;
+  team?: string;
+  player?: string;
+  scorer?: string;
+  assist?: string;
+  player_off?: string;
+  player_on?: string;
+  reason?: string;
+  home_team?: string;
+  away_team?: string;
+  home_score?: number;
+  away_score?: number;
+}
+
+export interface MatchDetail {
+  match_id: string;
+  match: CompletedMatch;
+  events: MatchEventDetail[];
+}
+
 export interface WorldState {
   leagues: Record<string, League>;
   next_fixtures: Fixture[];

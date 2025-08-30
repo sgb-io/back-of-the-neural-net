@@ -133,6 +133,48 @@ class GameOrchestrator:
         
         return fixtures
     
+    def get_completed_matches(self, limit: Optional[int] = None) -> List[Match]:
+        """Get completed matches, most recent first."""
+        completed_matches = [
+            match for match in self.world.matches.values()
+            if match.finished
+        ]
+        
+        # Sort by matchday and season (most recent first)
+        completed_matches.sort(
+            key=lambda m: (m.season, m.matchday),
+            reverse=True
+        )
+        
+        if limit:
+            completed_matches = completed_matches[:limit]
+        
+        return completed_matches
+    
+    def get_match_events(self, match_id: str) -> List[Any]:
+        """Get all events for a specific match."""
+        # Get all events from the event store
+        all_events = self.event_store.get_events()
+        
+        # Filter events that belong to this match
+        match_events = []
+        seen_event_ids = set()
+        
+        for event in all_events:
+            # Skip duplicate events
+            if event.id in seen_event_ids:
+                continue
+            
+            # Check if event has match_id attribute and matches
+            if hasattr(event, 'match_id') and event.match_id == match_id:
+                match_events.append(event)
+                seen_event_ids.add(event.id)
+        
+        # Sort by timestamp
+        match_events.sort(key=lambda e: e.timestamp)
+        
+        return match_events
+    
     async def advance_simulation(self) -> dict:
         """Advance the simulation by one step (matchday)."""
         if not self.is_initialized:
