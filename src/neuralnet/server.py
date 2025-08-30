@@ -172,6 +172,82 @@ async def get_fixtures(limit: int = 20) -> dict:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/matches")
+async def get_completed_matches(limit: int = 50) -> dict:
+    """Get completed matches."""
+    try:
+        matches = orchestrator.get_completed_matches(limit=limit)
+        
+        return {
+            "matches": [
+                {
+                    "id": match.id,
+                    "home_team": orchestrator.world.get_team_by_id(match.home_team_id).name,
+                    "away_team": orchestrator.world.get_team_by_id(match.away_team_id).name,
+                    "league": match.league,
+                    "matchday": match.matchday,
+                    "season": match.season,
+                    "home_score": match.home_score,
+                    "away_score": match.away_score,
+                    "finished": match.finished
+                }
+                for match in matches
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/matches/{match_id}/events")
+async def get_match_events(match_id: str) -> dict:
+    """Get events for a specific match."""
+    try:
+        # Check if match exists
+        match = orchestrator.world.get_match_by_id(match_id)
+        if not match:
+            raise HTTPException(status_code=404, detail="Match not found")
+        
+        events = orchestrator.get_match_events(match_id)
+        
+        return {
+            "match_id": match_id,
+            "match": {
+                "id": match.id,
+                "home_team": orchestrator.world.get_team_by_id(match.home_team_id).name,
+                "away_team": orchestrator.world.get_team_by_id(match.away_team_id).name,
+                "league": match.league,
+                "matchday": match.matchday,
+                "season": match.season,
+                "home_score": match.home_score,
+                "away_score": match.away_score,
+                "finished": match.finished
+            },
+            "events": [
+                {
+                    "event_type": event.event_type,
+                    "timestamp": event.timestamp.isoformat(),
+                    "minute": getattr(event, 'minute', None),
+                    "team": getattr(event, 'team', None),
+                    "player": getattr(event, 'player', None),
+                    "scorer": getattr(event, 'scorer', None),
+                    "assist": getattr(event, 'assist', None),
+                    "player_off": getattr(event, 'player_off', None),
+                    "player_on": getattr(event, 'player_on', None),
+                    "reason": getattr(event, 'reason', None),
+                    "home_team": getattr(event, 'home_team', None),
+                    "away_team": getattr(event, 'away_team', None),
+                    "home_score": getattr(event, 'home_score', None),
+                    "away_score": getattr(event, 'away_score', None),
+                }
+                for event in events
+            ]
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Health check endpoint
 @app.get("/health")
 async def health_check() -> dict:

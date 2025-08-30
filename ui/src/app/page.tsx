@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { WorldState, MatchEvent, AdvanceResponse, League } from '@/types/api';
+import { WorldState, MatchEvent, AdvanceResponse, League, CompletedMatch, MatchDetail, MatchEventDetail } from '@/types/api';
 
 export default function Home() {
   const [worldState, setWorldState] = useState<WorldState | null>(null);
@@ -10,6 +10,12 @@ export default function Home() {
   const [selectedLeague, setSelectedLeague] = useState<string>('');
   const [lastEvents, setLastEvents] = useState<MatchEvent[]>([]);
   const [status, setStatus] = useState<string>('');
+  
+  // New state for match browsing
+  const [completedMatches, setCompletedMatches] = useState<CompletedMatch[]>([]);
+  const [selectedMatch, setSelectedMatch] = useState<MatchDetail | null>(null);
+  const [isLoadingMatches, setIsLoadingMatches] = useState<boolean>(false);
+  const [isLoadingMatchDetail, setIsLoadingMatchDetail] = useState<boolean>(false);
 
   // Load initial world state
   useEffect(() => {
@@ -50,8 +56,9 @@ export default function Home() {
         setStatus('Advanced to next matchday');
       }
       
-      // Reload world state
+      // Reload world state and completed matches
       await loadWorldState();
+      await loadCompletedMatches();
     } catch (error) {
       console.error('Failed to advance simulation:', error);
       setStatus('Failed to advance simulation');
@@ -78,6 +85,58 @@ export default function Home() {
         return `${event.event_type}: ${JSON.stringify(event, null, 2)}`;
     }
   };
+
+  const formatMatchEvent = (event: MatchEventDetail): string => {
+    switch (event.event_type) {
+      case 'Goal':
+        return `⚽ ${event.minute}' GOAL! ${event.scorer} scores for ${event.team}${event.assist ? ` (assist: ${event.assist})` : ''}`;
+      case 'YellowCard':
+        return `🟨 ${event.minute}' Yellow card for ${event.player} (${event.team}) - ${event.reason}`;
+      case 'RedCard':
+        return `🟥 ${event.minute}' Red card for ${event.player} (${event.team}) - ${event.reason}`;
+      case 'Substitution':
+        return `🔄 ${event.minute}' Substitution (${event.team}): ${event.player_off} ➔ ${event.player_on}`;
+      case 'MatchEnded':
+        return `🏁 Full time: ${event.home_team} ${event.home_score} - ${event.away_score} ${event.away_team}`;
+      case 'MatchStarted':
+        return `🟢 Match started: ${event.home_team} vs ${event.away_team}`;
+      case 'KickOff':
+        return `⚽ Kick off!`;
+      default:
+        return `${event.event_type}`;
+    }
+  };
+
+  const loadCompletedMatches = async (): Promise<void> => {
+    setIsLoadingMatches(true);
+    try {
+      const response = await axios.get<{matches: CompletedMatch[]}>('/api/matches?limit=20');
+      setCompletedMatches(response.data.matches);
+    } catch (error) {
+      console.error('Failed to load completed matches:', error);
+      setStatus('Failed to load completed matches');
+    } finally {
+      setIsLoadingMatches(false);
+    }
+  };
+
+  const loadMatchDetail = async (matchId: string): Promise<void> => {
+    setIsLoadingMatchDetail(true);
+    try {
+      const response = await axios.get<MatchDetail>(`/api/matches/${matchId}/events`);
+      setSelectedMatch(response.data);
+    } catch (error) {
+      console.error('Failed to load match detail:', error);
+      setStatus('Failed to load match detail');
+    } finally {
+      setIsLoadingMatchDetail(false);
+    }
+  };
+
+  // Load completed matches when component mounts
+  useEffect(() => {
+    loadCompletedMatches();
+  }, []);
 
   if (!worldState) {
     return (
@@ -193,6 +252,64 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      <div className="panel events-panel">
+        <h2>Browse Matches</h2>
+        
+        {selectedMatch ? (
+          <div className="match-detail">
+            <div className="match-detail-header">
+              <button 
+                className="back-button" 
+                onClick={() => setSelectedMatch(null)}
+              >
+                ← Back to Matches
+              </button>
+              <h3>
+                {selectedMatch.match.home_team} {selectedMatch.match.home_score} - {selectedMatch.match.away_score} {selectedMatch.match.away_team}
+              </h3>
+              <div className="match-info">
+                {selectedMatch.match.league} - Matchday {selectedMatch.match.matchday} (Season {selectedMatch.match.season})
+              </div>
+            </div>
+            
+            {isLoadingMatchDetail ? (
+              <div className="loading">Loading match events...</div>
+            ) : (
+              <div className="events-list">
+                {selectedMatch.events.map((event, index) => (
+                  <div key={index} className="event">
+                    <div className="event-type">{formatMatchEvent(event)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="matches-list">
+            {isLoadingMatches ? (
+              <div className="loading">Loading matches...</div>
+            ) : completedMatches.length === 0 ? (
+              <div>No completed matches yet. Advance the simulation to see match history.</div>
+            ) : (
+              completedMatches.map((match) => (
+                <div 
+                  key={match.id} 
+                  className="match-item"
+                  onClick={() => loadMatchDetail(match.id)}
+                >
+                  <div className="match-teams">
+                    {match.home_team} {match.home_score} - {match.away_score} {match.away_team}
+                  </div>
+                  <div className="match-info">
+                    {match.league} - MD{match.matchday} (S{match.season})
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

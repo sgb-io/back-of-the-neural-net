@@ -197,3 +197,72 @@ code {
   padding: 40px;
   color: #666;
 }
+
+/* Match browsing styles */
+.matches-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.match-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  background: #fafafa;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.match-item:hover {
+  background: #f0f0f0;
+}
+
+.match-teams {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.match-info {
+  font-size: 12px;
+  color: #666;
+}
+
+.match-detail {
+  margin-top: 20px;
+}
+
+.match-detail-header {
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #4a7c59;
+}
+
+.back-button {
+  background: #4a7c59;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.back-button:hover {
+  background: #2c5530;
+}
+
+.match-detail-header h3 {
+  margin: 10px 0 5px 0;
+  color: #2c5530;
+  font-size: 18px;
+}
+
+.match-detail-header .match-info {
+  color: #666;
+  font-size: 14px;
+}
