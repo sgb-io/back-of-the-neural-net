@@ -71,13 +71,21 @@ python main.py test
 - **Event Stream**: Real-time match events
 - **Simple UI**: One-button advancement with live updates
 
+### New Simulation Entities
+
+- **Club Owners/Directors**: Each team has ownership with wealth, ambition, patience, and public approval ratings that change based on performance
+- **Media Outlets**: Fantasy press entities that generate narratives and maintain biases toward different teams
+- **Player Agents**: Professional representatives for ~70% of players with negotiation skills and industry reputation
+- **Staff Members**: Coaches, physios, scouts, and other team personnel with morale and team rapport that affects performance
+
 ## Game Flow
 
 1. Press "Advance Simulation" to progress one matchday
 2. All matches for current matchday are simulated
-3. LLM analyzes events and updates soft state (morale, form)
-4. League tables and fixtures update
-5. Repeat until season completion
+3. LLM analyzes events and updates soft state (morale, form, owner satisfaction, staff rapport, etc.)
+4. Media outlets and other entities react to results and generate narratives
+5. League tables and fixtures update
+6. Repeat until season completion
 
 ## Architecture Details
 
@@ -107,6 +115,9 @@ python tests/test_basic.py
 
 # Or with pytest if available
 pytest tests/
+
+# Test new entities
+python test_new_entities.py
 ```
 
 ## Future Enhancements
@@ -115,9 +126,9 @@ pytest tests/
 - Real-world data import options
 - Advanced LLM prompting for narratives
 - Cup competitions
-- Transfer system
+- Transfer system with agent negotiations
 - Player development
-- Media simulation
+- Enhanced media simulation with story generation
 - More sophisticated UI
 
 ---

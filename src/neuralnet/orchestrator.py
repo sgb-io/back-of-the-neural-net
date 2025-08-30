@@ -2,7 +2,7 @@
 
 import asyncio
 import uuid
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from .data import create_sample_world
 from .entities import GameWorld, League, Match
@@ -31,6 +31,9 @@ class GameOrchestrator:
         
         # Create sample world
         self.world = create_sample_world()
+        
+        # Re-initialize match engine with new world
+        self.match_engine = MatchEngine(self.world)
         
         # Generate fixtures for both leagues
         self._generate_fixtures()
@@ -219,5 +222,55 @@ class GameOrchestrator:
                     "matchday": match.matchday
                 }
                 for match in self.get_current_matchday_fixtures()[:10]  # Limit to 10 for display
-            ]
+            ],
+            "entities_summary": {
+                "total_players": len(self.world.players),
+                "total_club_owners": len(self.world.club_owners),
+                "total_staff_members": len(self.world.staff_members),
+                "total_player_agents": len(self.world.player_agents),
+                "total_media_outlets": len(self.world.media_outlets)
+            },
+            "recent_narratives": self._get_recent_narratives()
         }
+    
+    def _get_recent_narratives(self) -> List[Dict[str, Any]]:
+        """Get recent narratives from media outlets and other sources."""
+        narratives = []
+        
+        # Sample some media stories and owner statements
+        import random
+        
+        # Get a few media outlets
+        sample_outlets = list(self.world.media_outlets.values())[:3]
+        for outlet in sample_outlets:
+            if outlet.active_stories:
+                narratives.extend([
+                    {
+                        "type": "media_story",
+                        "source": outlet.name,
+                        "headline": story,
+                        "outlet_type": outlet.outlet_type
+                    }
+                    for story in outlet.active_stories[:2]  # Limit to 2 per outlet
+                ])
+        
+        # Add some club owner sentiment
+        for owner in list(self.world.club_owners.values())[:5]:  # Sample 5 owners
+            team = self.world.get_team_by_id(owner.team_id)
+            if team:
+                if owner.public_approval < 40:
+                    narratives.append({
+                        "type": "owner_sentiment",
+                        "source": f"{owner.name} ({owner.role})",
+                        "headline": f"Fan pressure mounting on {team.name} leadership",
+                        "sentiment": "negative"
+                    })
+                elif owner.public_approval > 80:
+                    narratives.append({
+                        "type": "owner_sentiment", 
+                        "source": f"{owner.name} ({owner.role})",
+                        "headline": f"{team.name} ownership praised by supporters",
+                        "sentiment": "positive"
+                    })
+        
+        return narratives[:10]  # Limit total narratives

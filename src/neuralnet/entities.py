@@ -110,6 +110,82 @@ class League(BaseModel):
         return self.current_matchday > self.total_matchdays
 
 
+class ClubOwner(BaseModel):
+    """A club owner/director/chairperson."""
+    id: str
+    name: str
+    team_id: str
+    role: str = Field(description="Owner, Director, Chairman, etc.")
+    
+    # Hard attributes
+    wealth: int = Field(ge=1, le=100, description="Financial resources")
+    business_acumen: int = Field(ge=1, le=100, description="Business skills")
+    
+    # Soft attributes (LLM-driven)
+    ambition: int = Field(default=50, ge=1, le=100, description="Sporting ambition")
+    patience: int = Field(default=50, ge=1, le=100, description="Patience with results")
+    public_approval: int = Field(default=50, ge=1, le=100, description="Fan approval rating")
+    
+    # Metadata
+    years_at_club: int = Field(default=1, ge=0)
+
+
+class MediaOutlet(BaseModel):
+    """A press/media outlet."""
+    id: str
+    name: str
+    outlet_type: str = Field(description="Newspaper, TV, Radio, Online, etc.")
+    
+    # Hard attributes
+    reach: int = Field(ge=1, le=100, description="Audience reach")
+    credibility: int = Field(ge=1, le=100, description="Journalistic credibility")
+    
+    # Soft attributes (LLM-driven)
+    bias_towards_teams: Dict[str, int] = Field(default_factory=dict, description="Team bias ratings (-100 to 100)")
+    sensationalism: int = Field(default=50, ge=1, le=100, description="Tendency toward sensational stories")
+    
+    # Current narratives
+    active_stories: List[str] = Field(default_factory=list, description="Currently running story topics")
+
+
+class PlayerAgent(BaseModel):
+    """A player agent."""
+    id: str
+    name: str
+    agency_name: str
+    
+    # Hard attributes
+    negotiation_skill: int = Field(ge=1, le=100, description="Contract negotiation ability")
+    network_reach: int = Field(ge=1, le=100, description="Industry connections")
+    
+    # Soft attributes (LLM-driven)
+    reputation: int = Field(default=50, ge=1, le=100, description="Industry reputation")
+    aggressiveness: int = Field(default=50, ge=1, le=100, description="How pushy in negotiations")
+    
+    # Client relationships
+    clients: List[str] = Field(default_factory=list, description="Player IDs represented")
+
+
+class StaffMember(BaseModel):
+    """A staff member (coach, medical, scout, etc.)."""
+    id: str
+    name: str
+    team_id: str
+    role: str = Field(description="Head Coach, Assistant Coach, Physio, Scout, etc.")
+    
+    # Hard attributes
+    experience: int = Field(ge=1, le=100, description="Years of experience")
+    specialization: int = Field(ge=1, le=100, description="Skill in their specialization")
+    
+    # Soft attributes (LLM-driven)
+    morale: int = Field(default=50, ge=1, le=100, description="Staff member morale")
+    team_rapport: int = Field(default=50, ge=1, le=100, description="Relationship with team")
+    
+    # Metadata
+    contract_years_remaining: int = Field(default=1, ge=0)
+    salary: int = Field(default=50000, ge=0, description="Annual salary")
+
+
 class GameWorld(BaseModel):
     """The complete game world state."""
     season: int = Field(default=2024)
@@ -120,6 +196,12 @@ class GameWorld(BaseModel):
     teams: Dict[str, Team] = Field(default_factory=dict)
     players: Dict[str, Player] = Field(default_factory=dict)
     matches: Dict[str, Match] = Field(default_factory=dict)
+    
+    # New entities
+    club_owners: Dict[str, ClubOwner] = Field(default_factory=dict)
+    media_outlets: Dict[str, MediaOutlet] = Field(default_factory=dict)
+    player_agents: Dict[str, PlayerAgent] = Field(default_factory=dict)
+    staff_members: Dict[str, StaffMember] = Field(default_factory=dict)
     
     # Simulation state
     paused: bool = Field(default=False)
@@ -140,6 +222,37 @@ class GameWorld(BaseModel):
     def get_player_by_id(self, player_id: str) -> Optional[Player]:
         """Get a player by its ID."""
         return self.players.get(player_id)
+    
+    def get_club_owner_by_id(self, owner_id: str) -> Optional[ClubOwner]:
+        """Get a club owner by its ID."""
+        return self.club_owners.get(owner_id)
+    
+    def get_media_outlet_by_id(self, outlet_id: str) -> Optional[MediaOutlet]:
+        """Get a media outlet by its ID."""
+        return self.media_outlets.get(outlet_id)
+    
+    def get_player_agent_by_id(self, agent_id: str) -> Optional[PlayerAgent]:
+        """Get a player agent by its ID."""
+        return self.player_agents.get(agent_id)
+    
+    def get_staff_member_by_id(self, staff_id: str) -> Optional[StaffMember]:
+        """Get a staff member by its ID."""
+        return self.staff_members.get(staff_id)
+    
+    def get_club_owners_for_team(self, team_id: str) -> List[ClubOwner]:
+        """Get all club owners for a specific team."""
+        return [owner for owner in self.club_owners.values() if owner.team_id == team_id]
+    
+    def get_staff_for_team(self, team_id: str) -> List[StaffMember]:
+        """Get all staff members for a specific team."""
+        return [staff for staff in self.staff_members.values() if staff.team_id == team_id]
+    
+    def get_agent_for_player(self, player_id: str) -> Optional[PlayerAgent]:
+        """Get the agent for a specific player."""
+        for agent in self.player_agents.values():
+            if player_id in agent.clients:
+                return agent
+        return None
     
     def get_league_table(self, league_id: str) -> List[Team]:
         """Get league table sorted by points, goal difference, then goals for."""

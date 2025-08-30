@@ -104,9 +104,36 @@ class MatchEnded(Event):
 
 class SoftStateUpdated(Event):
     """Event fired when LLM-driven soft state is updated."""
-    entity_type: str  # "player", "team", etc.
+    entity_type: str  # "player", "team", "club_owner", "media_outlet", "player_agent", "staff_member"
     entity_id: str
     updates: Dict[str, Any]
+
+
+class MediaStoryPublished(Event):
+    """Event fired when a media outlet publishes a story."""
+    media_outlet_id: str
+    headline: str
+    story_type: str  # "transfer_rumor", "performance_analysis", "scandal", "injury_update", etc.
+    entities_mentioned: List[str]  # IDs of players, teams, etc. mentioned
+    sentiment: int = Field(ge=-100, le=100, description="Story sentiment (-100 negative, 100 positive)")
+
+
+class OwnerStatement(Event):
+    """Event fired when a club owner makes a public statement."""
+    owner_id: str
+    team_id: str
+    statement_type: str  # "support", "pressure", "investment", "ambition", etc.
+    message: str
+    public_reaction: int = Field(ge=-100, le=100, description="Fan reaction to statement")
+
+
+class AgentNegotiation(Event):
+    """Event fired when a player agent enters negotiations or makes demands."""
+    agent_id: str
+    player_id: str
+    team_id: str
+    negotiation_type: str  # "contract_demand", "playing_time", "transfer_request", etc.
+    outcome: str  # "successful", "ongoing", "failed", etc.
 
 
 class EventStore:

@@ -6,13 +6,13 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from .entities import GameWorld, Player, Team
+from .entities import GameWorld, Player, Team, ClubOwner, MediaOutlet, PlayerAgent, StaffMember
 from .events import Event, MatchEvent
 
 
 class SoftStateUpdate(BaseModel):
     """Represents an update to soft state from LLM analysis."""
-    entity_type: str  # "player" or "team"
+    entity_type: str  # "player", "team", "club_owner", "media_outlet", "player_agent", "staff_member"
     entity_id: str
     updates: Dict[str, Any]
     reasoning: str = Field(description="LLM's reasoning for the changes")
@@ -110,6 +110,92 @@ class MockLLMProvider(LLMProvider):
                     updates={"team_morale": new_morale},
                     reasoning=reasoning
                 ))
+                
+                # Update club owners based on team performance
+                owners = world.get_club_owners_for_team(team.id)
+                for owner in owners:
+                    if position <= 3:  # Good performance
+                        new_patience = min(100, owner.patience + 1)
+                        new_approval = min(100, owner.public_approval + 3)
+                        updates.append(SoftStateUpdate(
+                            entity_type="club_owner",
+                            entity_id=owner.id,
+                            updates={"patience": new_patience, "public_approval": new_approval},
+                            reasoning=f"Owner satisfaction from team's good performance (position {position})"
+                        ))
+                    elif position >= len(table) - 2:  # Poor performance
+                        new_patience = max(1, owner.patience - 2)
+                        new_approval = max(1, owner.public_approval - 5)
+                        updates.append(SoftStateUpdate(
+                            entity_type="club_owner",
+                            entity_id=owner.id,
+                            updates={"patience": new_patience, "public_approval": new_approval},
+                            reasoning=f"Owner frustration from team's poor performance (position {position})"
+                        ))
+                
+                # Update staff morale based on team performance
+                staff = world.get_staff_for_team(team.id)
+                for staff_member in staff:
+                    if position <= 5:  # Good performance
+                        new_morale = min(100, staff_member.morale + 1)
+                        new_rapport = min(100, staff_member.team_rapport + 1)
+                        updates.append(SoftStateUpdate(
+                            entity_type="staff_member",
+                            entity_id=staff_member.id,
+                            updates={"morale": new_morale, "team_rapport": new_rapport},
+                            reasoning=f"Staff satisfaction from team's good performance"
+                        ))
+                    elif position >= len(table) - 3:  # Poor performance
+                        new_morale = max(1, staff_member.morale - 2)
+                        updates.append(SoftStateUpdate(
+                            entity_type="staff_member",
+                            entity_id=staff_member.id,
+                            updates={"morale": new_morale},
+                            reasoning=f"Staff concern from team's poor performance"
+                        ))
+        
+        # Update media narratives based on interesting stories
+        for outlet in world.media_outlets.values():
+            # Occasionally generate new stories or update sensationalism
+            import random
+            if random.random() < 0.3:  # 30% chance to update
+                new_sensationalism = max(1, min(100, outlet.sensationalism + random.randint(-5, 5)))
+                updates.append(SoftStateUpdate(
+                    entity_type="media_outlet",
+                    entity_id=outlet.id,
+                    updates={"sensationalism": new_sensationalism},
+                    reasoning="Media outlet adjusting editorial stance based on market response"
+                ))
+        
+        # Update player agents' reputation based on client performance
+        for agent in world.player_agents.values():
+            if agent.clients:
+                total_form = 0
+                client_count = 0
+                for client_id in agent.clients:
+                    player = world.get_player_by_id(client_id)
+                    if player:
+                        total_form += player.form
+                        client_count += 1
+                
+                if client_count > 0:
+                    avg_form = total_form / client_count
+                    if avg_form > 70:  # Clients performing well
+                        new_reputation = min(100, agent.reputation + 1)
+                        updates.append(SoftStateUpdate(
+                            entity_type="player_agent",
+                            entity_id=agent.id,
+                            updates={"reputation": new_reputation},
+                            reasoning="Agent reputation boost from client success"
+                        ))
+                    elif avg_form < 40:  # Clients struggling
+                        new_reputation = max(1, agent.reputation - 1)
+                        updates.append(SoftStateUpdate(
+                            entity_type="player_agent",
+                            entity_id=agent.id,
+                            updates={"reputation": new_reputation},
+                            reasoning="Agent reputation decline from client struggles"
+                        ))
         
         return updates
     
@@ -140,6 +226,14 @@ class SoftStateValidator:
             return self._validate_player_update(update, world)
         elif update.entity_type == "team":
             return self._validate_team_update(update, world)
+        elif update.entity_type == "club_owner":
+            return self._validate_club_owner_update(update, world)
+        elif update.entity_type == "media_outlet":
+            return self._validate_media_outlet_update(update, world)
+        elif update.entity_type == "player_agent":
+            return self._validate_player_agent_update(update, world)
+        elif update.entity_type == "staff_member":
+            return self._validate_staff_member_update(update, world)
         return False
     
     def _validate_player_update(self, update: SoftStateUpdate, world: GameWorld) -> bool:
@@ -170,6 +264,74 @@ class SoftStateValidator:
         
         return True
     
+    def _validate_club_owner_update(self, update: SoftStateUpdate, world: GameWorld) -> bool:
+        """Validate a club owner update."""
+        owner = world.get_club_owner_by_id(update.entity_id)
+        if not owner:
+            return False
+        
+        # Clamp all values to valid ranges
+        for key, value in update.updates.items():
+            if key in ["ambition", "patience", "public_approval"]:
+                if not isinstance(value, (int, float)) or value < 1 or value > 100:
+                    return False
+        
+        return True
+    
+    def _validate_media_outlet_update(self, update: SoftStateUpdate, world: GameWorld) -> bool:
+        """Validate a media outlet update."""
+        outlet = world.get_media_outlet_by_id(update.entity_id)
+        if not outlet:
+            return False
+        
+        # Clamp all values to valid ranges
+        for key, value in update.updates.items():
+            if key == "sensationalism":
+                if not isinstance(value, (int, float)) or value < 1 or value > 100:
+                    return False
+            elif key == "bias_towards_teams":
+                if not isinstance(value, dict):
+                    return False
+                for team_id, bias in value.items():
+                    if not isinstance(bias, (int, float)) or bias < -100 or bias > 100:
+                        return False
+            elif key == "active_stories":
+                if not isinstance(value, list):
+                    return False
+        
+        return True
+    
+    def _validate_player_agent_update(self, update: SoftStateUpdate, world: GameWorld) -> bool:
+        """Validate a player agent update."""
+        agent = world.get_player_agent_by_id(update.entity_id)
+        if not agent:
+            return False
+        
+        # Clamp all values to valid ranges
+        for key, value in update.updates.items():
+            if key in ["reputation", "aggressiveness"]:
+                if not isinstance(value, (int, float)) or value < 1 or value > 100:
+                    return False
+            elif key == "clients":
+                if not isinstance(value, list):
+                    return False
+        
+        return True
+    
+    def _validate_staff_member_update(self, update: SoftStateUpdate, world: GameWorld) -> bool:
+        """Validate a staff member update."""
+        staff = world.get_staff_member_by_id(update.entity_id)
+        if not staff:
+            return False
+        
+        # Clamp all values to valid ranges
+        for key, value in update.updates.items():
+            if key in ["morale", "team_rapport"]:
+                if not isinstance(value, (int, float)) or value < 1 or value > 100:
+                    return False
+        
+        return True
+    
     def apply_update(self, update: SoftStateUpdate, world: GameWorld) -> bool:
         """Apply a validated update to the world state."""
         if not self.validate_update(update, world):
@@ -189,6 +351,38 @@ class SoftStateValidator:
                 for key, value in update.updates.items():
                     if hasattr(team, key):
                         setattr(team, key, value)
+                return True
+        
+        elif update.entity_type == "club_owner":
+            owner = world.get_club_owner_by_id(update.entity_id)
+            if owner:
+                for key, value in update.updates.items():
+                    if hasattr(owner, key):
+                        setattr(owner, key, value)
+                return True
+        
+        elif update.entity_type == "media_outlet":
+            outlet = world.get_media_outlet_by_id(update.entity_id)
+            if outlet:
+                for key, value in update.updates.items():
+                    if hasattr(outlet, key):
+                        setattr(outlet, key, value)
+                return True
+        
+        elif update.entity_type == "player_agent":
+            agent = world.get_player_agent_by_id(update.entity_id)
+            if agent:
+                for key, value in update.updates.items():
+                    if hasattr(agent, key):
+                        setattr(agent, key, value)
+                return True
+        
+        elif update.entity_type == "staff_member":
+            staff = world.get_staff_member_by_id(update.entity_id)
+            if staff:
+                for key, value in update.updates.items():
+                    if hasattr(staff, key):
+                        setattr(staff, key, value)
                 return True
         
         return False
