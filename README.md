@@ -9,7 +9,7 @@ A football management simulation that combines deterministic match simulation wi
 - **Event-sourced**: All game state changes are recorded as events in SQLite
 - **Hard vs Soft State**: Match simulation is deterministic; player psychology is LLM-driven
 - **Python Core**: Core simulation engine with FastAPI REST API
-- **React UI**: Simple web interface with "Advance" button to progress simulation
+- **TypeScript + Next.js UI**: Modern web interface with "Advance" button to progress simulation
 
 ## Quick Start
 
@@ -38,10 +38,10 @@ npm install
 python main.py server
 ```
 
-2. **Start the React UI (in a separate terminal):**
+2. **Start the Next.js UI (in a separate terminal):**
 ```bash
 cd ui
-npm start
+npm run dev
 ```
 
 3. **Open your browser:**
