@@ -224,8 +224,14 @@ async def get_fixtures_with_predictions(limit: int = 20) -> dict:
                 "home_score": match.home_score if match.finished else None,
                 "away_score": match.away_score if match.finished else None,
                 "finished": match.finished,
-                "prediction": None
+                "prediction": None,
+                "importance": "normal",
+                "media_preview": None
             }
+            
+            # Determine match importance
+            importance_level = determine_match_importance(home_team, away_team, match.league, orchestrator.world)
+            fixture_data["importance"] = importance_level
             
             # Get match prediction if tools are available and match not finished
             if not match.finished and orchestrator.game_tools:
@@ -238,6 +244,16 @@ async def get_fixtures_with_predictions(limit: int = 20) -> dict:
                 except Exception as e:
                     print(f"Failed to get prediction for {home_team.name} vs {away_team.name}: {e}")
             
+            # Generate media preview for important matches
+            if importance_level in ["high", "derby", "title_race"]:
+                try:
+                    media_preview = await generate_match_media_preview(
+                        home_team, away_team, importance_level, orchestrator.game_tools
+                    )
+                    fixture_data["media_preview"] = media_preview
+                except Exception as e:
+                    print(f"Failed to get media preview for {home_team.name} vs {away_team.name}: {e}")
+            
             fixtures_with_predictions.append(fixture_data)
         
         return {
@@ -245,6 +261,98 @@ async def get_fixtures_with_predictions(limit: int = 20) -> dict:
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def determine_match_importance(home_team, away_team, league: str, world) -> str:
+    """Determine the importance level of a match."""
+    # Get league table to check positions
+    try:
+        league_table = world.get_league_table(league)
+        if not league_table:
+            return "normal"
+        
+        # Find team positions in table
+        home_position = None
+        away_position = None
+        
+        for i, team in enumerate(league_table, 1):
+            if team.id == home_team.id:
+                home_position = i
+            elif team.id == away_team.id:
+                away_position = i
+        
+        if home_position is None or away_position is None:
+            return "normal"
+        
+        # Top of table clash (both teams in top 3)
+        if home_position <= 3 and away_position <= 3:
+            return "title_race"
+        
+        # One team in top 3, other in top 6
+        if (home_position <= 3 and away_position <= 6) or (away_position <= 3 and home_position <= 6):
+            return "high"
+        
+        # Check for derby matches (same city/region - simple check based on name similarity)
+        home_words = set(home_team.name.lower().split())
+        away_words = set(away_team.name.lower().split())
+        
+        # Common words that might indicate same region
+        if home_words & away_words:  # If they share any words
+            return "derby"
+        
+        # Both teams in bottom 4 (relegation battle)
+        total_teams = len(league_table)
+        if home_position >= total_teams - 3 and away_position >= total_teams - 3:
+            return "relegation"
+        
+        return "normal"
+    except Exception as e:
+        print(f"Error in determine_match_importance: {e}")
+        return "normal"
+
+
+async def generate_match_media_preview(home_team, away_team, importance_level: str, game_tools) -> dict:
+    """Generate a media preview for an important match."""
+    if not game_tools:
+        return None
+    
+    try:
+        # Generate preview based on importance level
+        if importance_level == "title_race":
+            headline = f"Title Race Heats Up: {home_team.name} vs {away_team.name}"
+            preview = f"Two title contenders clash as {home_team.name} host {away_team.name} in what could be a season-defining encounter."
+        elif importance_level == "derby":
+            headline = f"Local Derby: {home_team.name} vs {away_team.name}"
+            preview = f"Pride is at stake as local rivals {home_team.name} and {away_team.name} face off in this heated derby match."
+        elif importance_level == "relegation":
+            headline = f"Relegation Battle: {home_team.name} vs {away_team.name}"
+            preview = f"Six-pointer alert! Both {home_team.name} and {away_team.name} desperately need points in this crucial relegation clash."
+        else:  # high importance
+            headline = f"Big Match: {home_team.name} vs {away_team.name}"
+            preview = f"High-stakes encounter as {home_team.name} take on {away_team.name} in a match that could shape their season."
+        
+        # Get some media views for additional context
+        home_media = await game_tools.get_media_views("team", home_team.id)
+        away_media = await game_tools.get_media_views("team", away_team.id)
+        
+        # Pick a high-reach outlet for the preview
+        home_outlets = home_media.get("media_coverage", [])
+        if home_outlets:
+            outlet = max(home_outlets, key=lambda x: x.get("reach", 0))
+            source = outlet.get("outlet_name", "Media Source")
+        else:
+            source = "Football Press"
+        
+        return {
+            "headline": headline,
+            "preview": preview,
+            "source": source,
+            "importance": importance_level
+        }
+    
+    except Exception as e:
+        print(f"Error generating media preview: {e}")
+        return None
 
 
 @app.get("/api/matches")

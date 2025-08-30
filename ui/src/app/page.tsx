@@ -248,13 +248,27 @@ export default function Home() {
               <div>No more fixtures scheduled</div>
             ) : (
               fixturesWithPredictions.map((fixture) => (
-                <div key={fixture.id} className="fixture">
+                <div key={fixture.id} className={`fixture ${fixture.importance !== 'normal' ? 'important-fixture' : ''}`}>
                   <div className="fixture-teams">
                     <TeamLink teamName={fixture.home_team} /> vs <TeamLink teamName={fixture.away_team} />
+                    {fixture.importance !== 'normal' && (
+                      <span className={`importance-badge ${fixture.importance}`}>
+                        {fixture.importance === 'title_race' ? '👑' : 
+                         fixture.importance === 'derby' ? '⚔️' : 
+                         fixture.importance === 'relegation' ? '🔻' : '⭐'}
+                      </span>
+                    )}
                   </div>
                   <div className="fixture-info">
                     {fixture.league} - MD{fixture.matchday}
                   </div>
+                  {fixture.media_preview && (
+                    <div className="media-preview">
+                      <div className="media-headline">{fixture.media_preview.headline}</div>
+                      <div className="media-content">{fixture.media_preview.preview}</div>
+                      <div className="media-source">— {fixture.media_preview.source}</div>
+                    </div>
+                  )}
                   {fixture.prediction && (
                     <div className="fixture-prediction">
                       <div className="prediction-score">

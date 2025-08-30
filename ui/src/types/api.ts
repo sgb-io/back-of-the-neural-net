@@ -39,6 +39,13 @@ export interface MatchPrediction {
   };
 }
 
+export interface MediaPreview {
+  headline: string;
+  preview: string;
+  source: string;
+  importance: string;
+}
+
 export interface Fixture {
   id: string;
   home_team: string;
@@ -51,6 +58,8 @@ export interface Fixture {
   home_score?: number | null;
   away_score?: number | null;
   prediction?: MatchPrediction | null;
+  importance?: string;
+  media_preview?: MediaPreview | null;
 }
 
 export interface CompletedMatch {
