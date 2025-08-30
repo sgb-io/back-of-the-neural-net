@@ -142,8 +142,8 @@ code {
 
 .fixture {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 8px;
   padding: 12px;
   border: 1px solid #eee;
   border-radius: 4px;
@@ -151,13 +151,89 @@ code {
   background: #fafafa;
 }
 
+.important-fixture {
+  border-left: 4px solid #ff6b35;
+  background: #fff9f5;
+}
+
 .fixture-teams {
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.importance-badge {
+  font-size: 16px;
+  margin-left: 8px;
 }
 
 .fixture-info {
   font-size: 12px;
   color: #666;
+}
+
+.media-preview {
+  background: #f8f9fb;
+  padding: 10px;
+  border-radius: 4px;
+  border-left: 3px solid #6c5ce7;
+  margin: 4px 0;
+}
+
+.media-headline {
+  font-weight: 600;
+  font-size: 13px;
+  color: #2d3748;
+  margin-bottom: 4px;
+}
+
+.media-content {
+  font-size: 12px;
+  color: #4a5568;
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.media-source {
+  font-size: 11px;
+  color: #718096;
+  font-style: italic;
+}
+
+.fixture-prediction {
+  background: #f0f8ff;
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  border-left: 3px solid #4a90e2;
+}
+
+.prediction-score {
+  font-weight: 600;
+  color: #2c5530;
+  margin-bottom: 4px;
+}
+
+.prediction-probabilities {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.prob-home {
+  color: #0066cc;
+  font-weight: 500;
+}
+
+.prob-draw {
+  color: #666;
+  font-weight: 500;
+}
+
+.prob-away {
+  color: #cc6600;
+  font-weight: 500;
 }
 
 .events-panel {
