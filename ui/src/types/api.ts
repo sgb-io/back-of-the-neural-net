@@ -123,6 +123,48 @@ export interface TeamLookupResponse {
   league: string;
 }
 
+export interface PlayerLookupResponse {
+  player_id: string;
+  player_name: string;
+  position: string;
+}
+
+export interface PlayerSeasonStats {
+  goals: number;
+  assists: number;
+  yellow_cards: number;
+  red_cards: number;
+  matches_played: number;
+  minutes_played: number;
+}
+
+export interface PlayerCurrentTeam {
+  id: string;
+  name: string;
+  league: string;
+}
+
+export interface PlayerDetail {
+  id: string;
+  name: string;
+  position: string;
+  age: number;
+  overall_rating: number;
+  pace: number;
+  shooting: number;
+  passing: number;
+  defending: number;
+  physicality: number;
+  form: number;
+  morale: number;
+  fitness: number;
+  injured: boolean;
+  yellow_cards: number;
+  red_cards: number;
+  current_team: PlayerCurrentTeam;
+  season_stats: PlayerSeasonStats;
+}
+
 export interface MatchEventDetail {
   event_type: string;
   timestamp: string;

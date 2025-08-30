@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { WorldState, MatchEvent, AdvanceResponse, League, CompletedMatch, MatchDetail, MatchEventDetail, Fixture } from '@/types/api';
+import { WorldState, MatchEvent, GoalEvent, CardEvent, SubstitutionEvent, MatchEndedEvent, AdvanceResponse, League, CompletedMatch, MatchDetail, MatchEventDetail, Fixture } from '@/types/api';
 import TeamLink from '@/components/TeamLink';
+import PlayerLink from '@/components/PlayerLink';
 
 export default function Home() {
   const [worldState, setWorldState] = useState<WorldState | null>(null);
@@ -74,43 +75,76 @@ export default function Home() {
     }
   };
 
-  const formatEvent = (event: MatchEvent): string => {
+  const formatEvent = (event: MatchEvent): React.ReactElement => {
     switch (event.event_type) {
       case 'Goal':
-        return `⚽ ${event.minute}' GOAL! ${event.scorer} scores for ${event.team}${event.assist ? ` (assist: ${event.assist})` : ''}`;
+        const goalEvent = event as GoalEvent;
+        return (
+          <span>
+            ⚽ {goalEvent.minute}&apos; GOAL! <PlayerLink playerName={goalEvent.scorer} /> scores for {goalEvent.team}
+            {goalEvent.assist && <span> (assist: <PlayerLink playerName={goalEvent.assist} />)</span>}
+          </span>
+        );
       case 'YellowCard':
-        return `🟨 ${event.minute}' Yellow card for ${event.player} (${event.team}) - ${event.reason}`;
       case 'RedCard':
-        return `🟥 ${event.minute}' Red card for ${event.player} (${event.team}) - ${event.reason}`;
+        const cardEvent = event as CardEvent;
+        return (
+          <span>
+            {event.event_type === 'YellowCard' ? '🟨' : '🟥'} {cardEvent.minute}&apos; {event.event_type === 'YellowCard' ? 'Yellow' : 'Red'} card for <PlayerLink playerName={cardEvent.player} /> ({cardEvent.team}) - {cardEvent.reason}
+          </span>
+        );
       case 'Substitution':
-        return `🔄 ${event.minute}' Substitution (${event.team}): ${event.player_off} ➔ ${event.player_on}`;
+        const subEvent = event as SubstitutionEvent;
+        return (
+          <span>
+            🔄 {subEvent.minute}&apos; Substitution ({subEvent.team}): <PlayerLink playerName={subEvent.player_off} /> ➔ <PlayerLink playerName={subEvent.player_on} />
+          </span>
+        );
       case 'MatchEnded':
-        return `🏁 Full time: ${event.home_team} ${event.home_score} - ${event.away_score} ${event.away_team}`;
+        const matchEndEvent = event as MatchEndedEvent;
+        return <span>🏁 Full time: {matchEndEvent.home_team} {matchEndEvent.home_score} - {matchEndEvent.away_score} {matchEndEvent.away_team}</span>;
       case 'KickOff':
-        return `⚽ Kick off!`;
+        return <span>⚽ Kick off!</span>;
       default:
-        return `${event.event_type}: ${JSON.stringify(event, null, 2)}`;
+        return <span>{event.event_type}: {JSON.stringify(event, null, 2)}</span>;
     }
   };
 
-  const formatMatchEvent = (event: MatchEventDetail): string => {
+  const formatMatchEvent = (event: MatchEventDetail): React.ReactElement => {
     switch (event.event_type) {
       case 'Goal':
-        return `⚽ ${event.minute}' GOAL! ${event.scorer} scores for ${event.team}${event.assist ? ` (assist: ${event.assist})` : ''}`;
+        return (
+          <span>
+            ⚽ {event.minute}&apos; GOAL! <PlayerLink playerName={event.scorer || ''} /> scores for {event.team}
+            {event.assist && <span> (assist: <PlayerLink playerName={event.assist} />)</span>}
+          </span>
+        );
       case 'YellowCard':
-        return `🟨 ${event.minute}' Yellow card for ${event.player} (${event.team}) - ${event.reason}`;
+        return (
+          <span>
+            🟨 {event.minute}&apos; Yellow card for <PlayerLink playerName={event.player || ''} /> ({event.team}) - {event.reason}
+          </span>
+        );
       case 'RedCard':
-        return `🟥 ${event.minute}' Red card for ${event.player} (${event.team}) - ${event.reason}`;
+        return (
+          <span>
+            🟥 {event.minute}&apos; Red card for <PlayerLink playerName={event.player || ''} /> ({event.team}) - {event.reason}
+          </span>
+        );
       case 'Substitution':
-        return `🔄 ${event.minute}' Substitution (${event.team}): ${event.player_off} ➔ ${event.player_on}`;
+        return (
+          <span>
+            🔄 {event.minute}&apos; Substitution ({event.team}): <PlayerLink playerName={event.player_off || ''} /> ➔ <PlayerLink playerName={event.player_on || ''} />
+          </span>
+        );
       case 'MatchEnded':
-        return `🏁 Full time: ${event.home_team} ${event.home_score} - ${event.away_score} ${event.away_team}`;
+        return <span>🏁 Full time: {event.home_team} {event.home_score} - {event.away_score} {event.away_team}</span>;
       case 'MatchStarted':
-        return `🟢 Match started: ${event.home_team} vs ${event.away_team}`;
+        return <span>🟢 Match started: {event.home_team} vs {event.away_team}</span>;
       case 'KickOff':
-        return `⚽ Kick off!`;
+        return <span>⚽ Kick off!</span>;
       default:
-        return `${event.event_type}`;
+        return <span>{event.event_type}</span>;
     }
   };
 
