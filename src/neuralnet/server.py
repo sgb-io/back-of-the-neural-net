@@ -584,6 +584,26 @@ async def get_player_details(player_id: str) -> dict:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/players/lookup/{player_name}")
+async def lookup_player_by_name(player_name: str) -> dict:
+    """Get player ID by player name."""
+    try:
+        # Find player by name
+        for player_id, player in orchestrator.world.players.items():
+            if player.name == player_name:
+                return {
+                    "player_id": player_id,
+                    "player_name": player.name,
+                    "position": player.position.value
+                }
+        
+        raise HTTPException(status_code=404, detail="Player not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/teams/lookup/{team_name}")
 async def lookup_team_by_name(team_name: str) -> dict:
     """Get team ID by team name."""

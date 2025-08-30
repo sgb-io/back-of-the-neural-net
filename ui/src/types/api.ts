@@ -123,6 +123,12 @@ export interface TeamLookupResponse {
   league: string;
 }
 
+export interface PlayerLookupResponse {
+  player_id: string;
+  player_name: string;
+  position: string;
+}
+
 export interface PlayerSeasonStats {
   goals: number;
   assists: number;
