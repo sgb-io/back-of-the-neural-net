@@ -3,7 +3,7 @@
 import uuid
 from typing import Dict
 
-from .entities import GameWorld, League, Player, Position, Team
+from .entities import GameWorld, League, Player, Position, Team, ClubOwner, MediaOutlet, PlayerAgent, StaffMember
 
 
 def create_sample_world() -> GameWorld:
@@ -73,6 +73,12 @@ def create_sample_world() -> GameWorld:
         # Add players to world
         for player in team.players:
             world.players[player.id] = player
+    
+    # Create club owners, staff, agents, and media outlets
+    _create_club_owners(world)
+    _create_staff_members(world)
+    _create_player_agents(world)
+    _create_media_outlets(world)
     
     return world
 
@@ -211,3 +217,158 @@ def get_fantasy_player_names() -> list[str]:
         "Ruby Speedster", "Emerald Swiftfoot", "Sapphire Trueshoot", "Onyx Powerplay",
         "Mercury Quickpass", "Neptune Wavemaker", "Jupiter Stormcaller", "Mars Firefeet",
     ]
+
+
+def _create_club_owners(world: GameWorld) -> None:
+    """Create club owners for all teams."""
+    import random
+    
+    owner_names = [
+        "Sir Reginald Goldworth", "Lady Victoria Silverstein", "Lord Edmund Blackstone",
+        "Baron Marcus Windmere", "Duchess Eleanor Brightwater", "Earl Thomas Stormhold",
+        "Count Alexander Ironwood", "Marquess James Shadowmere", "Duke William Starforge",
+        "Princess Isabella Moonhaven", "Prince Charles Fireborn", "Sir Arthur Lightbringer",
+        "Lady Margaret Swiftwind", "Lord Henry Goldcrest", "Baroness Catherine Brightfire",
+        "Don Carlos Ventodoro", "Doña Isabella Solbrillante", "Señor Diego Tierrafuerte",
+        "Señora Carmen Ondaplatina", "Don Rafael Cieloazul", "Doña Sofia Estrellaluz"
+    ]
+    
+    roles = ["Owner", "Chairman", "Director", "President"]
+    name_index = 0
+    
+    for team_id in world.teams.keys():
+        owner = ClubOwner(
+            id=str(uuid.uuid4()),
+            name=owner_names[name_index % len(owner_names)],
+            team_id=team_id,
+            role=random.choice(roles),
+            wealth=random.randint(60, 100),
+            business_acumen=random.randint(40, 90),
+            ambition=random.randint(40, 80),
+            patience=random.randint(30, 70),
+            public_approval=random.randint(40, 80),
+            years_at_club=random.randint(1, 10)
+        )
+        world.club_owners[owner.id] = owner
+        name_index += 1
+
+
+def _create_staff_members(world: GameWorld) -> None:
+    """Create staff members for all teams."""
+    import random
+    
+    staff_names = [
+        "Giuseppe Tacticus", "Antonio Motivatore", "Francesco Preparatore", "Marco Analytico",
+        "Roberto Fisico", "Andrea Mentale", "Stefano Tecnico", "Alessandro Strategico",
+        "Lorenzo Atletico", "Matteo Performante", "Hans Methodology", "Klaus Systematic",
+        "Wolfgang Precision", "Gunther Excellence", "Jurgen Innovative", "Franz Strategic",
+        "Pierre Excellence", "Jean-Claude Perfection", "Michel Tactique", "Henri Discipline",
+        "Pep Genialidad", "Luis Inteligencia", "Carlos Experiencia", "Miguel Sabiduría"
+    ]
+    
+    roles = ["Head Coach", "Assistant Coach", "Fitness Coach", "Goalkeeping Coach", 
+             "Physio", "Scout", "Analyst", "Youth Coach"]
+    
+    name_index = 0
+    
+    for team_id in world.teams.keys():
+        # Each team gets 3-4 staff members
+        num_staff = random.randint(3, 4)
+        selected_roles = random.sample(roles, num_staff)
+        
+        for role in selected_roles:
+            staff = StaffMember(
+                id=str(uuid.uuid4()),
+                name=staff_names[name_index % len(staff_names)],
+                team_id=team_id,
+                role=role,
+                experience=random.randint(30, 90),
+                specialization=random.randint(40, 95),
+                morale=random.randint(40, 80),
+                team_rapport=random.randint(40, 80),
+                contract_years_remaining=random.randint(1, 4),
+                salary=random.randint(30000, 200000)
+            )
+            world.staff_members[staff.id] = staff
+            name_index += 1
+
+
+def _create_player_agents(world: GameWorld) -> None:
+    """Create player agents and assign them to players."""
+    import random
+    
+    agent_data = [
+        ("Jorge Mendes Fantasy", "Super Star Sports"),
+        ("Mino Raiola Fantastic", "Power Player Management"),
+        ("Jonathan Barnett Dreams", "Creative Artists Agency Fantasy"),
+        ("Pini Zahavi Legends", "Elite Player Representation"),
+        ("Kia Joorabchian Magic", "Media Base Sports Fantasy"),
+        ("Pere Guardiola Visions", "Family Business Agency"),
+        ("Volker Struth Innovations", "Sports Total Fantasy"),
+        ("Fali Ramadani Excellence", "Lian Sports Fantasy"),
+        ("Federico Pastorello Prestige", "P&P Sport Management Fantasy"),
+        ("Carlos Bucero Success", "You First Sports Fantasy")
+    ]
+    
+    # Create agents
+    agents = []
+    for i, (agent_name, agency_name) in enumerate(agent_data):
+        agent = PlayerAgent(
+            id=str(uuid.uuid4()),
+            name=agent_name,
+            agency_name=agency_name,
+            negotiation_skill=random.randint(60, 95),
+            network_reach=random.randint(50, 90),
+            reputation=random.randint(50, 85),
+            aggressiveness=random.randint(30, 80),
+            clients=[]
+        )
+        agents.append(agent)
+        world.player_agents[agent.id] = agent
+    
+    # Assign players to agents (roughly 70% of players have agents)
+    all_players = list(world.players.keys())
+    random.shuffle(all_players)
+    
+    players_with_agents = all_players[:int(len(all_players) * 0.7)]
+    
+    for i, player_id in enumerate(players_with_agents):
+        agent = agents[i % len(agents)]
+        agent.clients.append(player_id)
+
+
+def _create_media_outlets(world: GameWorld) -> None:
+    """Create media outlets for coverage."""
+    import random
+    
+    outlets = [
+        ("Fantasy Football Times", "Newspaper"),
+        ("Football Fantasy Weekly", "Magazine"),
+        ("Sport Vision Fantasy", "TV"),
+        ("Goal Stream Fantasy", "Online"),
+        ("Fantasy Match Radio", "Radio"),
+        ("The Football Fantasy", "Newspaper"),
+        ("Sport Tribune Fantasy", "Newspaper"),
+        ("Fantasy Football Network", "TV"),
+        ("Digital Sport Fantasy", "Online"),
+        ("Radio Football Fantasy", "Radio")
+    ]
+    
+    for outlet_name, outlet_type in outlets:
+        outlet = MediaOutlet(
+            id=str(uuid.uuid4()),
+            name=outlet_name,
+            outlet_type=outlet_type,
+            reach=random.randint(40, 90),
+            credibility=random.randint(50, 85),
+            sensationalism=random.randint(30, 70),
+            bias_towards_teams={},
+            active_stories=[]
+        )
+        
+        # Add some random team biases (only for a few teams)
+        teams_to_bias = random.sample(list(world.teams.keys()), random.randint(2, 5))
+        for team_id in teams_to_bias:
+            outlet.bias_towards_teams[team_id] = random.randint(-30, 30)
+        
+        world.media_outlets[outlet.id] = outlet
