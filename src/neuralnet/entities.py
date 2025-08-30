@@ -43,6 +43,20 @@ class Player(BaseModel):
     injured: bool = Field(default=False)
     yellow_cards: int = Field(default=0, ge=0)
     red_cards: int = Field(default=0, ge=0)
+    
+    @property
+    def overall_rating(self) -> int:
+        """Calculate overall player rating from attributes."""
+        # Simple average of all skill attributes
+        skills = [self.pace, self.shooting, self.passing, self.defending, self.physicality]
+        base_rating = sum(skills) / len(skills)
+        
+        # Factor in form and fitness
+        form_modifier = (self.form - 50) * 0.1  # -5 to +5 modifier
+        fitness_modifier = (self.fitness - 100) * 0.05  # Penalty for low fitness
+        
+        overall = base_rating + form_modifier + fitness_modifier
+        return max(1, min(100, int(overall)))
 
 
 class Team(BaseModel):

@@ -8,17 +8,27 @@ from .data import create_sample_world
 from .entities import GameWorld, League, Match
 from .events import EventStore, MatchEnded, MatchScheduled, MatchStarted, SoftStateUpdated, WorldInitialized
 from .llm import BrainOrchestrator, MockLLMProvider
+from .llm_mcp import MockToolsLLMProvider, ToolsLLMProvider
+from .game_tools import GameStateTools
 from .simulation import MatchEngine
 
 
 class GameOrchestrator:
     """Main orchestrator for the football simulation game."""
     
-    def __init__(self, event_store: Optional[EventStore] = None) -> None:
+    def __init__(self, event_store: Optional[EventStore] = None, use_tools: bool = True) -> None:
         self.event_store = event_store or EventStore()
         self.world = GameWorld()
         self.match_engine = MatchEngine(self.world)
-        self.brain_orchestrator = BrainOrchestrator(MockLLMProvider())
+        
+        # Initialize game state tools and LLM provider
+        self.use_tools = use_tools
+        if use_tools:
+            self.game_tools = GameStateTools(self.world)
+            self.brain_orchestrator = BrainOrchestrator(MockToolsLLMProvider(self.game_tools))
+        else:
+            self.game_tools = None
+            self.brain_orchestrator = BrainOrchestrator(MockLLMProvider())
         
         # State tracking
         self.is_initialized = False
@@ -34,6 +44,11 @@ class GameOrchestrator:
         
         # Re-initialize match engine with new world
         self.match_engine = MatchEngine(self.world)
+        
+        # Re-initialize game tools with new world
+        if self.use_tools:
+            self.game_tools = GameStateTools(self.world)
+            self.brain_orchestrator = BrainOrchestrator(MockToolsLLMProvider(self.game_tools))
         
         # Generate fixtures for both leagues
         self._generate_fixtures()
@@ -274,3 +289,45 @@ class GameOrchestrator:
                     })
         
         return narratives[:10]  # Limit total narratives
+    
+    async def query_game_tool(self, tool_name: str, **kwargs) -> Dict[str, Any]:
+        """Query a game state tool directly for testing/debugging."""
+        if not self.use_tools or not self.game_tools:
+            return {"error": "Game tools not enabled"}
+        
+        try:
+            if tool_name == "get_match_predictions":
+                return await self.game_tools.get_match_predictions(kwargs["home_team_id"], kwargs["away_team_id"])
+            elif tool_name == "get_reputation_info":
+                return await self.game_tools.get_reputation_info(
+                    kwargs["entity_type"], kwargs["entity_id"], 
+                    kwargs["relation_type"], kwargs["relation_id"]
+                )
+            elif tool_name == "get_head_to_head":
+                return await self.game_tools.get_head_to_head(
+                    kwargs["team1_id"], kwargs["team2_id"], kwargs.get("limit", 5)
+                )
+            elif tool_name == "get_media_views":
+                return await self.game_tools.get_media_views(kwargs["entity_type"], kwargs["entity_id"])
+            elif tool_name == "generate_random":
+                return await self.game_tools.generate_random(
+                    kwargs["type"], kwargs.get("min_val"), kwargs.get("max_val"),
+                    kwargs.get("choices"), kwargs.get("seed")
+                )
+            else:
+                return {"error": f"Unknown tool: {tool_name}"}
+        except Exception as e:
+            return {"error": str(e)}
+    
+    def get_available_game_tools(self) -> List[str]:
+        """Get list of available game state tools."""
+        if not self.use_tools or not self.game_tools:
+            return []
+        
+        return [
+            "get_match_predictions",
+            "get_reputation_info", 
+            "get_head_to_head",
+            "get_media_views",
+            "generate_random"
+        ]
