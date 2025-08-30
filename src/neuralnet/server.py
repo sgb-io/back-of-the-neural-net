@@ -179,6 +179,28 @@ async def health_check() -> dict:
     return {"status": "healthy"}
 
 
+@app.get("/api/tools")
+async def get_available_tools() -> dict:
+    """Get list of available game state tools."""
+    try:
+        return {
+            "tools": orchestrator.get_available_game_tools(),
+            "tools_enabled": orchestrator.use_tools
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/tools/{tool_name}")
+async def call_game_tool(tool_name: str, arguments: dict) -> dict:
+    """Call a game state tool with the provided arguments."""
+    try:
+        result = await orchestrator.query_game_tool(tool_name, **arguments)
+        return {"tool": tool_name, "result": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000, reload=True)
