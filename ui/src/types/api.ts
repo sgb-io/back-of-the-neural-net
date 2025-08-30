@@ -37,6 +37,55 @@ export interface CompletedMatch {
   home_score: number;
   away_score: number;
   finished: boolean;
+  is_home?: boolean; // For team-specific matches
+}
+
+export interface Player {
+  id: string;
+  name: string;
+  position: string;
+  age: number;
+  overall_rating: number;
+  pace: number;
+  shooting: number;
+  passing: number;
+  defending: number;
+  physicality: number;
+  form: number;
+  morale: number;
+  fitness: number;
+  injured: boolean;
+  yellow_cards: number;
+  red_cards: number;
+}
+
+export interface TeamDetail {
+  id: string;
+  name: string;
+  league: string;
+  team_morale: number;
+  tactical_familiarity: number;
+  matches_played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goals_for: number;
+  goals_against: number;
+  goal_difference: number;
+  points: number;
+  players: Player[];
+}
+
+export interface TeamMatchesResponse {
+  team_id: string;
+  team_name: string;
+  matches: CompletedMatch[];
+}
+
+export interface TeamLookupResponse {
+  team_id: string;
+  team_name: string;
+  league: string;
 }
 
 export interface MatchEventDetail {
