@@ -1,12 +1,15 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { WorldState, MatchEvent, AdvanceResponse, League } from '@/types/api';
 
-function App() {
-  const [worldState, setWorldState] = useState(null);
-  const [isAdvancing, setIsAdvancing] = useState(false);
-  const [selectedLeague, setSelectedLeague] = useState('');
-  const [lastEvents, setLastEvents] = useState([]);
-  const [status, setStatus] = useState('');
+export default function Home() {
+  const [worldState, setWorldState] = useState<WorldState | null>(null);
+  const [isAdvancing, setIsAdvancing] = useState<boolean>(false);
+  const [selectedLeague, setSelectedLeague] = useState<string>('');
+  const [lastEvents, setLastEvents] = useState<MatchEvent[]>([]);
+  const [status, setStatus] = useState<string>('');
 
   // Load initial world state
   useEffect(() => {
@@ -23,9 +26,9 @@ function App() {
     }
   }, [worldState, selectedLeague]);
 
-  const loadWorldState = async () => {
+  const loadWorldState = async (): Promise<void> => {
     try {
-      const response = await axios.get('/api/world');
+      const response = await axios.get<WorldState>('/api/world');
       setWorldState(response.data);
     } catch (error) {
       console.error('Failed to load world state:', error);
@@ -33,12 +36,12 @@ function App() {
     }
   };
 
-  const advanceSimulation = async () => {
+  const advanceSimulation = async (): Promise<void> => {
     setIsAdvancing(true);
     setStatus('Advancing simulation...');
     
     try {
-      const response = await axios.post('/api/advance');
+      const response = await axios.post<AdvanceResponse>('/api/advance');
       setLastEvents(response.data.events || []);
       
       if (response.data.status === 'matches_completed') {
@@ -57,7 +60,7 @@ function App() {
     }
   };
 
-  const formatEvent = (event) => {
+  const formatEvent = (event: MatchEvent): string => {
     switch (event.event_type) {
       case 'Goal':
         return `⚽ ${event.minute}' GOAL! ${event.scorer} scores for ${event.team}${event.assist ? ` (assist: ${event.assist})` : ''}`;
@@ -84,7 +87,7 @@ function App() {
     );
   }
 
-  const currentLeague = worldState.leagues[selectedLeague];
+  const currentLeague: League | undefined = worldState.leagues[selectedLeague];
 
   return (
     <div className="app">
@@ -193,5 +196,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
