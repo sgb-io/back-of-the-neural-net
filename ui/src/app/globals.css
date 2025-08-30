@@ -142,8 +142,8 @@ code {
 
 .fixture {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 8px;
   padding: 12px;
   border: 1px solid #eee;
   border-radius: 4px;
@@ -158,6 +158,41 @@ code {
 .fixture-info {
   font-size: 12px;
   color: #666;
+}
+
+.fixture-prediction {
+  background: #f0f8ff;
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  border-left: 3px solid #4a90e2;
+}
+
+.prediction-score {
+  font-weight: 600;
+  color: #2c5530;
+  margin-bottom: 4px;
+}
+
+.prediction-probabilities {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.prob-home {
+  color: #0066cc;
+  font-weight: 500;
+}
+
+.prob-draw {
+  color: #666;
+  font-weight: 500;
+}
+
+.prob-away {
+  color: #cc6600;
+  font-weight: 500;
 }
 
 .events-panel {

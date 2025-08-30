@@ -19,12 +19,38 @@ export interface League {
   table: TeamTableEntry[];
 }
 
+export interface MatchPrediction {
+  home_team: string;
+  away_team: string;
+  win_probabilities: {
+    home_win: number;
+    draw: number;
+    away_win: number;
+  };
+  predicted_score: {
+    home_goals: number;
+    away_goals: number;
+  };
+  factors: {
+    home_strength: number;
+    away_strength: number;
+    home_form: number;
+    away_form: number;
+  };
+}
+
 export interface Fixture {
   id: string;
   home_team: string;
   away_team: string;
+  home_team_id?: string;
+  away_team_id?: string;
   league: string;
   matchday: number;
+  finished?: boolean;
+  home_score?: number | null;
+  away_score?: number | null;
+  prediction?: MatchPrediction | null;
 }
 
 export interface CompletedMatch {

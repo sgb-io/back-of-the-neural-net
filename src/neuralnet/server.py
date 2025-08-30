@@ -202,6 +202,51 @@ async def get_fixtures(limit: int = 20) -> dict:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/fixtures/predictions")
+async def get_fixtures_with_predictions(limit: int = 20) -> dict:
+    """Get upcoming fixtures with match predictions."""
+    try:
+        fixtures = orchestrator.get_current_matchday_fixtures()[:limit]
+        fixtures_with_predictions = []
+        
+        for match in fixtures:
+            home_team = orchestrator.world.get_team_by_id(match.home_team_id)
+            away_team = orchestrator.world.get_team_by_id(match.away_team_id)
+            
+            fixture_data = {
+                "id": match.id,
+                "home_team": home_team.name,
+                "away_team": away_team.name,
+                "home_team_id": match.home_team_id,
+                "away_team_id": match.away_team_id,
+                "league": match.league,
+                "matchday": match.matchday,
+                "home_score": match.home_score if match.finished else None,
+                "away_score": match.away_score if match.finished else None,
+                "finished": match.finished,
+                "prediction": None
+            }
+            
+            # Get match prediction if tools are available and match not finished
+            if not match.finished and orchestrator.game_tools:
+                try:
+                    prediction = await orchestrator.game_tools.get_match_predictions(
+                        match.home_team_id, match.away_team_id
+                    )
+                    if "error" not in prediction:
+                        fixture_data["prediction"] = prediction
+                except Exception as e:
+                    print(f"Failed to get prediction for {home_team.name} vs {away_team.name}: {e}")
+            
+            fixtures_with_predictions.append(fixture_data)
+        
+        return {
+            "fixtures": fixtures_with_predictions
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/matches")
 async def get_completed_matches(limit: int = 50) -> dict:
     """Get completed matches."""
