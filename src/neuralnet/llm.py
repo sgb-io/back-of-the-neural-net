@@ -37,6 +37,15 @@ class LLMProvider(ABC):
     ) -> List[SoftStateUpdate]:
         """Analyze overall season progress and propose updates."""
         pass
+    
+    @abstractmethod
+    async def generate_career_summary(
+        self, 
+        player_id: str, 
+        world: GameWorld
+    ) -> str:
+        """Generate a career summary for a specific player."""
+        pass
 
 
 class MockLLMProvider(LLMProvider):
@@ -215,6 +224,77 @@ class MockLLMProvider(LLMProvider):
         """Get current player morale."""
         player = world.get_player_by_id(player_id)
         return player.morale if player else 50
+    
+    async def generate_career_summary(
+        self, 
+        player_id: str, 
+        world: GameWorld
+    ) -> str:
+        """Generate a mock career summary for a specific player."""
+        player = world.get_player_by_id(player_id)
+        if not player:
+            return "Player not found."
+        
+        # Find the player's current team
+        current_team = None
+        for team in world.teams.values():
+            if any(p.id == player_id for p in team.players):
+                current_team = team
+                break
+        
+        # Generate a simple mock career summary
+        team_name = current_team.name if current_team else "Unknown Team"
+        
+        # Create mock career narrative based on player attributes
+        if player.overall_rating >= 80:
+            talent_level = "exceptional talent"
+        elif player.overall_rating >= 70:
+            talent_level = "skilled professional"
+        elif player.overall_rating >= 60:
+            talent_level = "solid contributor"
+        else:
+            talent_level = "developing player"
+        
+        # Create position-specific narrative
+        position_desc = ""
+        if player.position.value in ["ST", "LW", "RW"]:
+            if player.shooting > 70:
+                position_desc = f"Known for clinical finishing and goal-scoring instinct, {player.name} has been a reliable attacking threat."
+            else:
+                position_desc = f"{player.name} brings pace and movement to the attack, creating opportunities for teammates."
+        elif player.position.value in ["CM", "CAM", "CDM"]:
+            if player.passing > 80:
+                position_desc = f"A creative midfield maestro, {player.name} orchestrates play with precise passing and vision."
+            else:
+                position_desc = f"{player.name} provides energy and work rate in the middle of the park."
+        elif player.position.value in ["CB", "LB", "RB"]:
+            if player.defending > 70:
+                position_desc = f"A defensive stalwart, {player.name} has been a cornerstone of the team's backline."
+            else:
+                position_desc = f"{player.name} offers pace and athleticism in defense."
+        elif player.position.value == "GK":
+            position_desc = f"Between the posts, {player.name} has shown reliability and command of the penalty area."
+        else:
+            position_desc = f"{player.name} has been a versatile player capable of adapting to different roles."
+        
+        # Form-based recent performance
+        form_desc = ""
+        if player.form > 70:
+            form_desc = "Currently in excellent form and playing with confidence."
+        elif player.form > 50:
+            form_desc = "Showing steady form and consistency in recent performances."
+        else:
+            form_desc = "Working to regain peak form and match sharpness."
+        
+        summary = f"""At {player.age} years old, {player.name} is a {talent_level} playing as a {player.position.value} for {team_name}. 
+
+{position_desc}
+
+{form_desc} With an overall rating of {player.overall_rating}, {player.name} continues to be an important part of the squad, bringing experience and determination to every match.
+
+The {player.position.value} has maintained good fitness levels and remains committed to contributing to the team's success this season."""
+        
+        return summary
 
 
 class SoftStateValidator:

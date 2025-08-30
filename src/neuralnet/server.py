@@ -3,6 +3,7 @@
 import asyncio
 import json
 from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import AsyncGenerator
 
 from fastapi import FastAPI, HTTPException
@@ -578,6 +579,42 @@ async def get_player_details(player_id: str) -> dict:
             },
             "season_stats": season_stats
         }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/players/{player_id}/career-summary")
+async def get_player_career_summary(player_id: str) -> dict:
+    """Generate and return a career summary for a specific player using LLM."""
+    try:
+        player = orchestrator.world.get_player_by_id(player_id)
+        if not player:
+            raise HTTPException(status_code=404, detail="Player not found")
+        
+        # Generate career summary using the LLM provider
+        brain_orchestrator = orchestrator.brain_orchestrator
+        if brain_orchestrator and brain_orchestrator.llm_provider:
+            summary = await brain_orchestrator.llm_provider.generate_career_summary(
+                player_id, orchestrator.world
+            )
+            
+            return {
+                "player_id": player_id,
+                "player_name": player.name,
+                "career_summary": summary,
+                "generated_at": str(datetime.now())
+            }
+        else:
+            # Fallback if no LLM provider available
+            return {
+                "player_id": player_id,
+                "player_name": player.name,
+                "career_summary": f"{player.name} is a {player.age}-year-old {player.position.value} with an overall rating of {player.overall_rating}.",
+                "generated_at": str(datetime.now())
+            }
+        
     except HTTPException:
         raise
     except Exception as e:

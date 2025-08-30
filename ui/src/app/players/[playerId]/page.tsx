@@ -17,6 +17,8 @@ export default function PlayerPage({ params }: PlayerPageProps) {
   const [playerDetail, setPlayerDetail] = useState<PlayerDetail | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
+  const [careerSummary, setCareerSummary] = useState<string>('');
+  const [isLoadingCareerSummary, setIsLoadingCareerSummary] = useState<boolean>(false);
 
   useEffect(() => {
     // Resolve the params Promise and get playerId
@@ -36,11 +38,29 @@ export default function PlayerPage({ params }: PlayerPageProps) {
       setIsLoading(true);
       const response = await axios.get<PlayerDetail>(`/api/players/${playerId}`);
       setPlayerDetail(response.data);
+      
+      // Load career summary after player data is loaded
+      loadCareerSummary();
     } catch (error) {
       console.error('Failed to load player data:', error);
       setError('Failed to load player data');
     } finally {
       setIsLoading(false);
+    }
+  }, [playerId]);
+
+  const loadCareerSummary = useCallback(async (): Promise<void> => {
+    if (!playerId) return;
+    
+    try {
+      setIsLoadingCareerSummary(true);
+      const response = await axios.get(`/api/players/${playerId}/career-summary`);
+      setCareerSummary(response.data.career_summary);
+    } catch (error) {
+      console.error('Failed to load career summary:', error);
+      setCareerSummary('Unable to generate career summary at this time.');
+    } finally {
+      setIsLoadingCareerSummary(false);
     }
   }, [playerId]);
 
@@ -242,13 +262,29 @@ export default function PlayerPage({ params }: PlayerPageProps) {
           </div>
         </div>
 
-        {/* Career Summary Panel (placeholder for future LLM integration) */}
+        {/* Career Summary Panel */}
         <div className="panel">
           <h2>Career Summary</h2>
           <div className="career-summary">
-            <p className="summary-placeholder">
-              <em>Career summary powered by AI will be available soon...</em>
-            </p>
+            {isLoadingCareerSummary ? (
+              <p className="summary-loading">
+                <em>🧠 Generating AI-powered career summary...</em>
+              </p>
+            ) : careerSummary ? (
+              <div className="summary-content">
+                {careerSummary.split('\n').map((paragraph, index) => (
+                  paragraph.trim() && (
+                    <p key={index} className="summary-paragraph">
+                      {paragraph.trim()}
+                    </p>
+                  )
+                ))}
+              </div>
+            ) : (
+              <p className="summary-placeholder">
+                <em>Career summary powered by AI will be available soon...</em>
+              </p>
+            )}
             <div className="career-facts">
               <div className="fact-item">
                 <span className="fact-label">Position:</span>
