@@ -4,11 +4,13 @@ import asyncio
 import uuid
 from typing import List, Optional, Dict, Any
 
+from .config import get_config, Config
 from .data import create_sample_world
 from .entities import GameWorld, League, Match
 from .events import EventStore, MatchEnded, MatchScheduled, MatchStarted, SoftStateUpdated, WorldInitialized
 from .llm import BrainOrchestrator, MockLLMProvider
 from .llm_mcp import MockToolsLLMProvider, ToolsLLMProvider
+from .llm_lmstudio import LMStudioProvider
 from .game_tools import GameStateTools
 from .simulation import MatchEngine
 
@@ -16,23 +18,43 @@ from .simulation import MatchEngine
 class GameOrchestrator:
     """Main orchestrator for the football simulation game."""
     
-    def __init__(self, event_store: Optional[EventStore] = None, use_tools: bool = True) -> None:
+    def __init__(self, event_store: Optional[EventStore] = None, config: Optional[Config] = None) -> None:
+        self.config = config or get_config()
         self.event_store = event_store or EventStore()
         self.world = GameWorld()
         self.match_engine = MatchEngine(self.world)
         
-        # Initialize game state tools and LLM provider
-        self.use_tools = use_tools
-        if use_tools:
+        # Initialize game state tools and LLM provider based on configuration
+        self.use_tools = self.config.use_tools
+        self.llm_provider = self._create_llm_provider()
+        
+        if self.use_tools:
             self.game_tools = GameStateTools(self.world)
-            self.brain_orchestrator = BrainOrchestrator(MockToolsLLMProvider(self.game_tools))
         else:
             self.game_tools = None
-            self.brain_orchestrator = BrainOrchestrator(MockLLMProvider())
+        
+        self.brain_orchestrator = BrainOrchestrator(self.llm_provider)
         
         # State tracking
         self.is_initialized = False
         self.current_matches: List[Match] = []
+    
+    def _create_llm_provider(self):
+        """Create LLM provider based on configuration."""
+        provider_type = self.config.llm.provider.lower()
+        
+        if provider_type == "lmstudio":
+            return LMStudioProvider(self.config.llm)
+        elif provider_type == "mock":
+            if self.use_tools:
+                # Will create tools later in initialize_world
+                return None  # Placeholder, will be replaced
+            else:
+                return MockLLMProvider()
+        else:
+            # Default to mock for unknown providers
+            print(f"Warning: Unknown LLM provider '{provider_type}', falling back to mock")
+            return MockLLMProvider()
     
     def initialize_world(self) -> None:
         """Initialize the game world with sample data."""
@@ -45,10 +67,17 @@ class GameOrchestrator:
         # Re-initialize match engine with new world
         self.match_engine = MatchEngine(self.world)
         
-        # Re-initialize game tools with new world
+        # Re-initialize game tools with new world and update LLM provider if needed
         if self.use_tools:
             self.game_tools = GameStateTools(self.world)
-            self.brain_orchestrator = BrainOrchestrator(MockToolsLLMProvider(self.game_tools))
+            if self.config.llm.provider.lower() == "mock":
+                # For mock provider with tools, recreate the provider
+                self.llm_provider = MockToolsLLMProvider(self.game_tools)
+                self.brain_orchestrator = BrainOrchestrator(self.llm_provider)
+        elif self.llm_provider is None:
+            # Fallback if provider wasn't created in constructor
+            self.llm_provider = MockLLMProvider()
+            self.brain_orchestrator = BrainOrchestrator(self.llm_provider)
         
         # Generate fixtures for both leagues
         self._generate_fixtures()

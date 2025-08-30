@@ -11,20 +11,50 @@ from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from sse_starlette.sse import EventSourceResponse
 
+from .config import get_config, validate_llm_config
 from .orchestrator import GameOrchestrator
 
 
-# Global orchestrator instance
-orchestrator = GameOrchestrator()
+# Global orchestrator instance - will be initialized in lifespan
+orchestrator: GameOrchestrator = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan manager."""
-    # Startup
-    orchestrator.initialize_world()
+    global orchestrator
+    
+    # Startup - validate configuration and initialize
+    try:
+        config = get_config()
+        validate_llm_config(config)
+        print(f"✓ LLM Provider: {config.llm.provider}")
+        
+        if config.llm.provider == "lmstudio":
+            print(f"✓ LM Studio URL: {config.llm.lmstudio_base_url}")
+            print(f"✓ LM Studio Model: {config.llm.lmstudio_model}")
+        
+        orchestrator = GameOrchestrator(config=config)
+        orchestrator.initialize_world()
+        print("✓ Game world initialized successfully")
+        
+    except Exception as e:
+        print(f"❌ Server startup failed: {e}")
+        print("\nConfiguration help:")
+        print("For LM Studio, set these environment variables:")
+        print("  LLM_PROVIDER=lmstudio")
+        print("  LMSTUDIO_MODEL=<your-model-name>")
+        print("  LMSTUDIO_BASE_URL=http://localhost:1234/v1  # (default)")
+        print("\nFor mock/testing, set:")
+        print("  LLM_PROVIDER=mock  # (default)")
+        raise
+    
     yield
+    
     # Shutdown - cleanup if needed
+    if orchestrator and hasattr(orchestrator, 'llm_provider'):
+        if hasattr(orchestrator.llm_provider, '__aexit__'):
+            await orchestrator.llm_provider.__aexit__(None, None, None)
 
 
 # Create FastAPI app
@@ -253,6 +283,22 @@ async def get_match_events(match_id: str) -> dict:
 async def health_check() -> dict:
     """Health check endpoint."""
     return {"status": "healthy"}
+
+
+@app.get("/api/config")
+async def get_config_info() -> dict:
+    """Get current LLM configuration information."""
+    try:
+        config = get_config()
+        return {
+            "llm_provider": config.llm.provider,
+            "use_tools": config.use_tools,
+            "lmstudio_configured": config.llm.provider == "lmstudio" and config.llm.lmstudio_model is not None,
+            "lmstudio_base_url": config.llm.lmstudio_base_url if config.llm.provider == "lmstudio" else None,
+            "lmstudio_model": config.llm.lmstudio_model if config.llm.provider == "lmstudio" else None
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/tools")
