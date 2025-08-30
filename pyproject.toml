@@ -9,7 +9,7 @@ description = "Proper football. Artificial brains."
 authors = [{name = "Back of the Neural Net Contributors"}]
 readme = "README.md"
 license = {text = "Apache-2.0"}
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.104.0",
     "uvicorn[standard]>=0.24.0",
