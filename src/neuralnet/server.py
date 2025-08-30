@@ -525,6 +525,65 @@ async def get_team_matches(team_id: str, limit: int = 10) -> dict:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/players/{player_id}")
+async def get_player_details(player_id: str) -> dict:
+    """Get detailed information about a specific player."""
+    try:
+        player = orchestrator.world.get_player_by_id(player_id)
+        if not player:
+            raise HTTPException(status_code=404, detail="Player not found")
+        
+        # Find the player's current team
+        current_team = None
+        for team in orchestrator.world.teams.values():
+            if any(p.id == player_id for p in team.players):
+                current_team = team
+                break
+        
+        if not current_team:
+            raise HTTPException(status_code=404, detail="Player's team not found")
+        
+        # Calculate season stats (for now, just basic stats - can be enhanced later)
+        # This is a placeholder for season-specific statistics
+        season_stats = {
+            "goals": 0,  # Would need to track from match events
+            "assists": 0,  # Would need to track from match events
+            "yellow_cards": player.yellow_cards,
+            "red_cards": player.red_cards,
+            "matches_played": 0,  # Would need to calculate from matches
+            "minutes_played": 0   # Would need to track from match events
+        }
+        
+        return {
+            "id": player.id,
+            "name": player.name,
+            "position": player.position.value,
+            "age": player.age,
+            "overall_rating": player.overall_rating,
+            "pace": player.pace,
+            "shooting": player.shooting,
+            "passing": player.passing,
+            "defending": player.defending,
+            "physicality": player.physicality,
+            "form": player.form,
+            "morale": player.morale,
+            "fitness": player.fitness,
+            "injured": player.injured,
+            "yellow_cards": player.yellow_cards,
+            "red_cards": player.red_cards,
+            "current_team": {
+                "id": current_team.id,
+                "name": current_team.name,
+                "league": current_team.league
+            },
+            "season_stats": season_stats
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/teams/lookup/{team_name}")
 async def lookup_team_by_name(team_name: str) -> dict:
     """Get team ID by team name."""

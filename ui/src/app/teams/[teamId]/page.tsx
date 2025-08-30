@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
-import { TeamDetail, TeamMatchesResponse, League, WorldState } from '@/types/api';
+import { TeamDetail, TeamMatchesResponse, WorldState } from '@/types/api';
 import TeamLink from '@/components/TeamLink';
 
 interface TeamPageProps {
@@ -14,7 +13,6 @@ interface TeamPageProps {
 }
 
 export default function TeamPage({ params }: TeamPageProps) {
-  const router = useRouter();
   const [teamId, setTeamId] = useState<string>('');
   
   const [teamDetail, setTeamDetail] = useState<TeamDetail | null>(null);
@@ -36,7 +34,7 @@ export default function TeamPage({ params }: TeamPageProps) {
     }
   }, [teamId]);
 
-  const loadTeamData = async (): Promise<void> => {
+  const loadTeamData = useCallback(async (): Promise<void> => {
     try {
       setIsLoading(true);
       
@@ -46,20 +44,23 @@ export default function TeamPage({ params }: TeamPageProps) {
       try {
         const teamResponse = await axios.get<TeamDetail>(`/api/teams/${teamId}`);
         setTeamDetail(teamResponse.data);
-      } catch (error: any) {
-        if (error.response?.status === 404) {
-          // Try to lookup team by name (convert from URL format)
-          const teamName = teamId.replace(/_/g, ' ');
-          try {
-            const lookupResponse = await axios.get(`/api/teams/lookup/${encodeURIComponent(teamName)}`);
-            actualTeamId = lookupResponse.data.team_id;
-            const teamResponse = await axios.get<TeamDetail>(`/api/teams/${actualTeamId}`);
-            setTeamDetail(teamResponse.data);
-          } catch (lookupError) {
-            throw new Error('Team not found');
+      } catch (error: unknown) {
+        if (error && typeof error === 'object' && 'response' in error) {
+          const axiosError = error as { response?: { status?: number } };
+          if (axiosError.response?.status === 404) {
+            // Try to lookup team by name (convert from URL format)
+            const teamName = teamId.replace(/_/g, ' ');
+            try {
+              const lookupResponse = await axios.get(`/api/teams/lookup/${encodeURIComponent(teamName)}`);
+              actualTeamId = lookupResponse.data.team_id;
+              const teamResponse = await axios.get<TeamDetail>(`/api/teams/${actualTeamId}`);
+              setTeamDetail(teamResponse.data);
+            } catch {
+              throw new Error('Team not found');
+            }
+          } else {
+            throw error;
           }
-        } else {
-          throw error;
         }
       }
       
@@ -77,7 +78,7 @@ export default function TeamPage({ params }: TeamPageProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [teamId]);
 
   const getPositionColor = (position: string): string => {
     switch (position) {
@@ -178,7 +179,9 @@ export default function TeamPage({ params }: TeamPageProps) {
                     >
                       {player.position}
                     </span>
-                    <span className="player-name">{player.name}</span>
+                    <Link href={`/players/${player.id}`} className="player-name-link">
+                      {player.name}
+                    </Link>
                     <span className="player-age">({player.age})</span>
                     <span className="player-overall">{player.overall_rating}</span>
                   </div>
