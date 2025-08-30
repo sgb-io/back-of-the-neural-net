@@ -286,6 +286,76 @@ Response:"""
             print(f"Warning: Unexpected error parsing LLM response: {e}")
             return []
 
+    async def generate_career_summary(
+        self, 
+        player_id: str, 
+        world: GameWorld
+    ) -> str:
+        """Generate a career summary for a specific player using LM Studio."""
+        player = world.get_player_by_id(player_id)
+        if not player:
+            return "Player not found."
+        
+        # Find the player's current team
+        current_team = None
+        for team in world.teams.values():
+            if any(p.id == player_id for p in team.players):
+                current_team = team
+                break
+        
+        # Build context about the player
+        team_name = current_team.name if current_team else "Unknown Team"
+        league_name = current_team.league if current_team else "Unknown League"
+        
+        # Create prompt for career summary
+        prompt = f"""You are a football analyst writing a career summary for a player profile. Write an engaging, realistic career summary for this player:
+
+Player: {player.name}
+Age: {player.age}
+Position: {player.position.value}
+Current Team: {team_name} ({league_name})
+Overall Rating: {player.overall_rating}/100
+
+Player Attributes:
+- Pace: {player.pace}/100
+- Shooting: {player.shooting}/100  
+- Passing: {player.passing}/100
+- Defending: {player.defending}/100
+- Physicality: {player.physicality}/100
+
+Current Condition:
+- Form: {player.form}/100
+- Morale: {player.morale}/100
+- Fitness: {player.fitness}/100
+
+Write a career summary that:
+1. Describes their playing style based on their attributes
+2. Mentions their current form and condition
+3. Discusses their role at their current club
+4. Is written in an engaging, journalistic style
+5. Is 2-3 paragraphs long
+6. Sounds realistic for a football player profile
+
+Do not make up specific achievements, transfer history, or statistics that aren't provided. Focus on their current attributes and potential based on the data given.
+
+Career Summary:"""
+        
+        try:
+            llm_response = await self._make_llm_request(prompt)
+            # Clean up the response
+            summary = llm_response.strip()
+            
+            # Remove any potential "Career Summary:" prefix if the LLM included it
+            if summary.startswith("Career Summary:"):
+                summary = summary[len("Career Summary:"):].strip()
+            
+            return summary
+            
+        except Exception as e:
+            print(f"Error generating career summary via LM Studio: {e}")
+            # Fallback to a simple summary
+            return f"{player.name} is a {player.age}-year-old {player.position.value} currently playing for {team_name}. With an overall rating of {player.overall_rating}, they continue to contribute to the team's efforts this season."
+
     async def __aenter__(self):
         """Async context manager entry."""
         return self

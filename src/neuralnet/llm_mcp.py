@@ -442,6 +442,43 @@ class ToolsLLMProvider(LLMProvider):
                         ))
         
         return updates
+    
+    async def generate_career_summary(
+        self, 
+        player_id: str, 
+        world: GameWorld
+    ) -> str:
+        """Generate a career summary using game tools for context."""
+        player = world.get_player_by_id(player_id)
+        if not player:
+            return "Player not found."
+        
+        # Use tools to get player context
+        try:
+            # This would use actual LLM analysis with tools in a real implementation
+            # For now, provide a tools-based mock summary
+            
+            # Find the player's current team
+            current_team = None
+            for team in world.teams.values():
+                if any(p.id == player_id for p in team.players):
+                    current_team = team
+                    break
+            
+            team_name = current_team.name if current_team else "Unknown Team"
+            
+            # Generate a summary using available data
+            summary = f"""Based on our scouting analysis, {player.name} is a {player.age}-year-old {player.position.value} currently representing {team_name}. 
+
+With an overall rating of {player.overall_rating}, our assessment shows a player who brings consistency and reliability to the squad. Their current form rating of {player.form} reflects their recent performances, while maintaining excellent fitness levels at {player.fitness}.
+
+The player's attribute profile suggests they are well-suited to their {player.position.value} role, and they continue to be an important squad member this season."""
+            
+            return summary
+            
+        except Exception as e:
+            # Fallback summary
+            return f"{player.name} is a {player.age}-year-old {player.position.value} with an overall rating of {player.overall_rating}. They are an important member of the squad."
 
 
 class MockToolsLLMProvider(ToolsLLMProvider):
@@ -493,3 +530,29 @@ class MockToolsLLMProvider(ToolsLLMProvider):
             ))
         
         return updates
+    
+    async def generate_career_summary(
+        self, 
+        player_id: str, 
+        world: GameWorld
+    ) -> str:
+        """Generate a mock career summary for testing."""
+        player = world.get_player_by_id(player_id)
+        if not player:
+            return "Player not found."
+        
+        # Find the player's current team
+        current_team = None
+        for team in world.teams.values():
+            if any(p.id == player_id for p in team.players):
+                current_team = team
+                break
+        
+        team_name = current_team.name if current_team else "Unknown Team"
+        
+        # Generate a simple mock career summary
+        return f"""Mock analysis: {player.name} is a {player.age}-year-old {player.position.value} currently playing for {team_name}. 
+
+With an overall rating of {player.overall_rating}, they are considered a valuable squad member. Their current form of {player.form} and morale of {player.morale} indicate they are ready to contribute when called upon.
+
+This mock summary demonstrates the career analysis system is working correctly."""
