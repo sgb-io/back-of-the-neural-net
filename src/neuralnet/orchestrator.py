@@ -44,6 +44,11 @@ class GameOrchestrator:
         provider_type = self.config.llm.provider.lower()
         
         if provider_type == "lmstudio":
+            # Validate LM Studio configuration
+            if not self.config.llm.lmstudio_model:
+                print(f"Warning: LM Studio model not specified, falling back to mock provider")
+                print(f"Set LMSTUDIO_MODEL environment variable to use LM Studio")
+                return MockLLMProvider() if not self.use_tools else None
             return LMStudioProvider(self.config.llm)
         elif provider_type == "mock":
             if self.use_tools:
@@ -54,7 +59,7 @@ class GameOrchestrator:
         else:
             # Default to mock for unknown providers
             print(f"Warning: Unknown LLM provider '{provider_type}', falling back to mock")
-            return MockLLMProvider()
+            return MockLLMProvider() if not self.use_tools else None
     
     def initialize_world(self) -> None:
         """Initialize the game world with sample data."""
@@ -70,8 +75,8 @@ class GameOrchestrator:
         # Re-initialize game tools with new world and update LLM provider if needed
         if self.use_tools:
             self.game_tools = GameStateTools(self.world)
-            if self.config.llm.provider.lower() == "mock":
-                # For mock provider with tools, recreate the provider
+            if self.config.llm.provider.lower() == "mock" or self.llm_provider is None:
+                # For mock provider with tools, or fallback case, recreate the provider
                 self.llm_provider = MockToolsLLMProvider(self.game_tools)
                 self.brain_orchestrator = BrainOrchestrator(self.llm_provider)
         elif self.llm_provider is None:
