@@ -18,6 +18,59 @@ A football management simulation that combines deterministic match simulation wi
 - Python 3.11+
 - Node.js 16+ (for UI)
 
+### LLM Configuration
+
+The game supports multiple LLM providers for enhanced AI-driven gameplay. Configure once and the entire application will use your preferred provider.
+
+#### Option 1: Mock LLM (Default)
+No configuration needed. Uses simple rule-based updates for testing and development.
+
+```bash
+# This is the default - no environment variables needed
+python main.py server
+```
+
+#### Option 2: LM Studio (Recommended for Local AI)
+[LM Studio](https://lmstudio.ai/) provides local LLM inference with an OpenAI-compatible API.
+
+**Setup Steps:**
+
+1. **Download and install LM Studio** from https://lmstudio.ai/
+2. **Load a model** in LM Studio (e.g., a 7B or 13B parameter model)
+3. **Start the local server** in LM Studio (usually runs on port 1234)
+4. **Configure environment variables:**
+
+```bash
+export LLM_PROVIDER=lmstudio
+export LMSTUDIO_MODEL="your-model-name"  # e.g., "llama-2-7b-chat"
+export LMSTUDIO_BASE_URL="http://localhost:1234/v1"  # default LM Studio URL
+```
+
+5. **Start the game server:**
+```bash
+python main.py server
+```
+
+The server will validate your LLM configuration on startup and provide helpful error messages if misconfigured.
+
+#### Option 3: Environment File (Recommended)
+Create a `.env` file in the project root for persistent configuration:
+
+```bash
+# .env file
+LLM_PROVIDER=lmstudio
+LMSTUDIO_MODEL=llama-2-7b-chat
+LMSTUDIO_BASE_URL=http://localhost:1234/v1
+LLM_TEMPERATURE=0.7
+LLM_MAX_TOKENS=1000
+```
+
+#### Verify Configuration
+Check your LLM configuration at any time:
+```bash
+curl http://localhost:8000/api/config
+```
+
 ### Installation
 
 1. **Install Python dependencies:**
@@ -51,7 +104,7 @@ npm run dev
 ## CLI Usage
 
 ```bash
-# Start server
+# Start server (uses configured LLM provider)
 python main.py server
 
 # Run headless simulation
@@ -59,6 +112,9 @@ python main.py simulate
 
 # Run basic tests
 python main.py test
+
+# With custom LLM configuration
+LLM_PROVIDER=lmstudio LMSTUDIO_MODEL=llama-2-7b-chat python main.py server
 ```
 
 ## Features
@@ -66,7 +122,8 @@ python main.py test
 - **Two Fantasy Leagues**: Premier Fantasy League and La Fantasia League
 - **Fantasy Teams & Players**: No real-world IP, all fantasy names
 - **Match Simulation**: Deterministic events (goals, cards, substitutions)
-- **LLM Integration**: Mock LLM updates player/team morale based on events
+- **AI-Driven Psychology**: Choose between mock LLM or local LM Studio for dynamic player/team morale and form updates
+- **Local AI Support**: Easy integration with LM Studio for private, local LLM inference
 - **League Tables**: Live updating standings
 - **Event Stream**: Real-time match events
 - **Simple UI**: One-button advancement with live updates

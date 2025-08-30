@@ -4,6 +4,14 @@ import os
 from typing import Optional
 from pydantic import BaseModel, Field
 
+# Try to load .env file if available
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # python-dotenv not available, continue without it
+    pass
+
 
 class LLMConfig(BaseModel):
     """Configuration for LLM providers."""
