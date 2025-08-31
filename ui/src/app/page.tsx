@@ -392,6 +392,16 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* Fullscreen loading overlay */}
+      {isAdvancing && (
+        <div className="fullscreen-loading-overlay">
+          <div className="loading-spinner">
+            <div className="spinner"></div>
+            <div className="loading-text">Advancing simulation...</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
