@@ -8,20 +8,20 @@ from .entities import GameWorld, League, Player, Position, Team, ClubOwner, Medi
 
 def create_sample_world() -> GameWorld:
     """Create a sample game world with fantasy teams and players."""
-    world = GameWorld(season=2024)
+    world = GameWorld(season=2025)
     
     # Create leagues
     premier_fantasy = League(
         id="premier_fantasy",
         name="Premier Fantasy League",
-        season=2024,
+        season=2025,
         teams=[]
     )
     
     la_fantasy = League(
         id="la_fantasy", 
         name="La Fantasia League",
-        season=2024,
+        season=2025,
         teams=[]
     )
     

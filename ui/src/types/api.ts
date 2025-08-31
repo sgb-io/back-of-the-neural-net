@@ -189,6 +189,8 @@ export interface MatchDetail {
 }
 
 export interface WorldState {
+  season: number;
+  current_date: string;
   leagues: Record<string, League>;
   next_fixtures: Fixture[];
 }
