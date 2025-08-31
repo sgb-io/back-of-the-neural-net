@@ -201,6 +201,153 @@ code {
   font-style: italic;
 }
 
+/* News feed styles */
+.news-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.league-news {
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  padding: 16px;
+  background: #fafafa;
+}
+
+.league-news-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c5530;
+  margin: 0 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.news-section {
+  margin-bottom: 16px;
+}
+
+.news-section:last-child {
+  margin-bottom: 0;
+}
+
+.news-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #4a7c59;
+  margin: 0 0 8px 0;
+}
+
+.news-item {
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  background: white;
+  border: 1px solid #eee;
+  transition: background-color 0.2s;
+}
+
+.news-item:hover {
+  background: #f8f9fa;
+}
+
+.news-item:last-child {
+  margin-bottom: 0;
+}
+
+.news-report {
+  border-left: 3px solid #6c5ce7;
+}
+
+.news-match {
+  border-left: 3px solid #4a90e2;
+}
+
+.important-match {
+  border-left: 3px solid #e17055;
+}
+
+.news-headline {
+  font-weight: 600;
+  font-size: 14px;
+  color: #2d3748;
+  margin-bottom: 6px;
+  line-height: 1.3;
+}
+
+.news-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #666;
+  flex-wrap: wrap;
+}
+
+.news-outlet {
+  font-weight: 500;
+  color: #4a7c59;
+}
+
+.news-teams {
+  font-weight: 500;
+}
+
+.news-sentiment {
+  font-size: 14px;
+}
+
+.news-sentiment.positive {
+  filter: hue-rotate(120deg);
+}
+
+.news-sentiment.negative {
+  filter: hue-rotate(-60deg);
+}
+
+.match-teams {
+  font-weight: 600;
+  font-size: 14px;
+  color: #2d3748;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.match-info {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+.match-prediction {
+  background: #f0f8ff;
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  border-left: 3px solid #4a90e2;
+  margin-top: 8px;
+}
+
+/* Responsive design for news feed */
+@media (max-width: 768px) {
+  .news-feed {
+    gap: 16px;
+  }
+  
+  .league-news {
+    padding: 12px;
+  }
+  
+  .news-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
 .fixture-prediction {
   background: #f0f8ff;
   padding: 8px;

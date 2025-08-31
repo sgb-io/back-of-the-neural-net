@@ -239,6 +239,40 @@ export interface UnknownEvent extends BaseEvent {
 
 export type MatchEvent = GoalEvent | CardEvent | SubstitutionEvent | MatchEndedEvent | KickOffEvent | UnknownEvent;
 
+// News Feed Types
+export interface NewsReport {
+  id: string;
+  type: 'report';
+  timestamp: string;
+  headline: string;
+  story_type: string;
+  sentiment: number;
+  outlet_name: string;
+  teams_mentioned: string[];
+}
+
+export interface NewsMatch {
+  id: string;
+  type: 'upcoming_match';
+  home_team: string;
+  away_team: string;
+  league: string;
+  matchday: number;
+  finished: boolean;
+  prediction?: MatchPrediction | null;
+  importance: string;
+  media_preview?: MediaPreview | null;
+}
+
+export interface NewsLeague {
+  recent_reports: NewsReport[];
+  upcoming_matches: NewsMatch[];
+}
+
+export interface NewsResponse {
+  news_by_league: Record<string, NewsLeague>;
+}
+
 // API Response Types
 export interface AdvanceResponse {
   status: 'matches_completed' | 'matchday_advanced';

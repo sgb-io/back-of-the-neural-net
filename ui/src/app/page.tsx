@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { WorldState, MatchEvent, GoalEvent, CardEvent, SubstitutionEvent, MatchEndedEvent, AdvanceResponse, League, CompletedMatch, MatchDetail, MatchEventDetail, Fixture } from '@/types/api';
+import { WorldState, MatchEvent, GoalEvent, CardEvent, SubstitutionEvent, MatchEndedEvent, AdvanceResponse, League, CompletedMatch, MatchDetail, MatchEventDetail, Fixture, NewsResponse, NewsReport, NewsMatch } from '@/types/api';
 import TeamLink from '@/components/TeamLink';
 import PlayerLink from '@/components/PlayerLink';
 
@@ -19,14 +19,14 @@ export default function Home() {
   const [isLoadingMatches, setIsLoadingMatches] = useState<boolean>(false);
   const [isLoadingMatchDetail, setIsLoadingMatchDetail] = useState<boolean>(false);
 
-  // New state for fixtures with predictions
-  const [fixturesWithPredictions, setFixturesWithPredictions] = useState<Fixture[]>([]);
-  const [isLoadingFixtures, setIsLoadingFixtures] = useState<boolean>(false);
+  // New state for news feed
+  const [newsData, setNewsData] = useState<NewsResponse | null>(null);
+  const [isLoadingNews, setIsLoadingNews] = useState<boolean>(false);
 
   // Load initial world state
   useEffect(() => {
     loadWorldState();
-    loadFixturesWithPredictions();
+    loadNewsData();
   }, []);
 
   // Set default league when world state loads
@@ -63,10 +63,10 @@ export default function Home() {
         setStatus('Advanced to next matchday');
       }
       
-      // Reload world state, completed matches, and fixtures
+      // Reload world state, completed matches, and news
       await loadWorldState();
       await loadCompletedMatches();
-      await loadFixturesWithPredictions();
+      await loadNewsData();
     } catch (error) {
       console.error('Failed to advance simulation:', error);
       setStatus('Failed to advance simulation');
@@ -174,16 +174,16 @@ export default function Home() {
     }
   };
 
-  const loadFixturesWithPredictions = async (): Promise<void> => {
-    setIsLoadingFixtures(true);
+  const loadNewsData = async (): Promise<void> => {
+    setIsLoadingNews(true);
     try {
-      const response = await axios.get<{fixtures: Fixture[]}>('/api/fixtures/predictions?limit=10');
-      setFixturesWithPredictions(response.data.fixtures);
+      const response = await axios.get<NewsResponse>('/api/news');
+      setNewsData(response.data);
     } catch (error) {
-      console.error('Failed to load fixtures with predictions:', error);
-      setStatus('Failed to load fixtures with predictions');
+      console.error('Failed to load news data:', error);
+      setStatus('Failed to load news data');
     } finally {
-      setIsLoadingFixtures(false);
+      setIsLoadingNews(false);
     }
   };
 
@@ -278,45 +278,85 @@ export default function Home() {
         </div>
 
         <div className="panel">
-          <h2>Next Fixtures</h2>
-          <div className="fixtures-list">
-            {isLoadingFixtures ? (
-              <div>Loading fixtures...</div>
-            ) : fixturesWithPredictions.length === 0 ? (
-              <div>No more fixtures scheduled</div>
+          <h2>News</h2>
+          <div className="news-feed">
+            {isLoadingNews ? (
+              <div>Loading news...</div>
+            ) : !newsData || Object.keys(newsData.news_by_league).length === 0 ? (
+              <div>No news available</div>
             ) : (
-              fixturesWithPredictions.map((fixture) => (
-                <div key={fixture.id} className={`fixture ${fixture.importance !== 'normal' ? 'important-fixture' : ''}`}>
-                  <div className="fixture-teams">
-                    <TeamLink teamName={fixture.home_team} /> vs <TeamLink teamName={fixture.away_team} />
-                    {fixture.importance !== 'normal' && (
-                      <span className={`importance-badge ${fixture.importance}`}>
-                        {fixture.importance === 'title_race' ? '👑' : 
-                         fixture.importance === 'derby' ? '⚔️' : 
-                         fixture.importance === 'relegation' ? '🔻' : '⭐'}
-                      </span>
-                    )}
-                  </div>
-                  <div className="fixture-info">
-                    {fixture.league} - MD{fixture.matchday}
-                  </div>
-                  {fixture.media_preview && (
-                    <div className="media-preview">
-                      <div className="media-headline">{fixture.media_preview.headline}</div>
-                      <div className="media-content">{fixture.media_preview.preview}</div>
-                      <div className="media-source">— {fixture.media_preview.source}</div>
+              Object.entries(newsData.news_by_league).map(([leagueId, leagueNews]) => (
+                <div key={leagueId} className="league-news">
+                  <h3 className="league-news-title">{leagueId.replace('_', ' ').toUpperCase()}</h3>
+                  
+                  {/* Recent Reports Section */}
+                  {leagueNews.recent_reports.length > 0 && (
+                    <div className="news-section">
+                      <h4 className="news-section-title">📰 Recent Reports</h4>
+                      {leagueNews.recent_reports.map((report: NewsReport) => (
+                        <div key={report.id} className="news-item news-report">
+                          <div className="news-headline">{report.headline}</div>
+                          <div className="news-meta">
+                            <span className="news-outlet">{report.outlet_name}</span>
+                            {report.teams_mentioned.length > 0 && (
+                              <span className="news-teams">
+                                {report.teams_mentioned.map((team, index) => (
+                                  <span key={index}>
+                                    {index > 0 && ', '}
+                                    <TeamLink teamName={team} />
+                                  </span>
+                                ))}
+                              </span>
+                            )}
+                            <span className={`news-sentiment ${report.sentiment > 0 ? 'positive' : report.sentiment < 0 ? 'negative' : 'neutral'}`}>
+                              {report.sentiment > 0 ? '😊' : report.sentiment < 0 ? '😞' : '😐'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
-                  {fixture.prediction && (
-                    <div className="fixture-prediction">
-                      <div className="prediction-score">
-                        Predicted: {fixture.prediction.predicted_score.home_goals} - {fixture.prediction.predicted_score.away_goals}
-                      </div>
-                      <div className="prediction-probabilities">
-                        <span className="prob-home">{fixture.home_team} {fixture.prediction.win_probabilities.home_win}%</span>
-                        <span className="prob-draw">Draw {fixture.prediction.win_probabilities.draw}%</span>
-                        <span className="prob-away">{fixture.away_team} {fixture.prediction.win_probabilities.away_win}%</span>
-                      </div>
+                  
+                  {/* Upcoming Matches Section */}
+                  {leagueNews.upcoming_matches.length > 0 && (
+                    <div className="news-section">
+                      <h4 className="news-section-title">⚽ Upcoming Matches</h4>
+                      {leagueNews.upcoming_matches.map((match: NewsMatch) => (
+                        <div key={match.id} className={`news-item news-match ${match.importance !== 'normal' ? 'important-match' : ''}`}>
+                          <div className="match-teams">
+                            <TeamLink teamName={match.home_team} /> vs <TeamLink teamName={match.away_team} />
+                            {match.importance !== 'normal' && (
+                              <span className={`importance-badge ${match.importance}`}>
+                                {match.importance === 'title_race' ? '👑' : 
+                                 match.importance === 'derby' ? '⚔️' : 
+                                 match.importance === 'relegation' ? '🔻' : '⭐'}
+                              </span>
+                            )}
+                          </div>
+                          <div className="match-info">
+                            Matchday {match.matchday}
+                          </div>
+                          {match.media_preview && (
+                            <div className="media-preview">
+                              <div className="media-headline">{match.media_preview.headline}</div>
+                              <div className="media-content">{match.media_preview.preview}</div>
+                              <div className="media-source">— {match.media_preview.source}</div>
+                            </div>
+                          )}
+                          {match.prediction && (
+                            <div className="match-prediction">
+                              <div className="prediction-score">
+                                Predicted: {match.prediction.predicted_score.home_goals} - {match.prediction.predicted_score.away_goals}
+                              </div>
+                              <div className="prediction-probabilities">
+                                <span className="prob-home">{match.home_team} {match.prediction.win_probabilities.home_win}%</span>
+                                <span className="prob-draw">Draw {match.prediction.win_probabilities.draw}%</span>
+                                <span className="prob-away">{match.away_team} {match.prediction.win_probabilities.away_win}%</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
