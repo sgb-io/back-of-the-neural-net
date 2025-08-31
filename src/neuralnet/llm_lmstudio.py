@@ -374,6 +374,7 @@ Career Summary:"""
         match_id = None
         home_score = 0
         away_score = 0
+        match_ended = False
         
         for event in match_events:
             if hasattr(event, 'match_id'):
@@ -381,8 +382,15 @@ Career Summary:"""
             if hasattr(event, 'home_score') and hasattr(event, 'away_score'):
                 home_score = event.home_score
                 away_score = event.away_score
+            # Check if match has actually ended
+            if event.event_type == "MatchEnded":
+                match_ended = True
         
         if not match_id:
+            return []
+        
+        # CRITICAL: Only generate reports for matches that have actually ended
+        if not match_ended:
             return []
         
         # Find the match to get team information

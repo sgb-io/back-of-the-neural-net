@@ -468,24 +468,24 @@ def determine_match_importance(home_team, away_team, league: str, world) -> str:
 
 
 async def generate_match_media_preview(home_team, away_team, importance_level: str, game_tools) -> dict:
-    """Generate a media preview for an important match."""
+    """Generate a media preview for an upcoming important match (NOT a match report)."""
     if not game_tools:
         return None
     
     try:
-        # Generate preview based on importance level
+        # Generate PREVIEW based on importance level - these are for UPCOMING matches only
         if importance_level == "title_race":
-            headline = f"Title Race Heats Up: {home_team.name} vs {away_team.name}"
-            preview = f"Two title contenders clash as {home_team.name} host {away_team.name} in what could be a season-defining encounter."
+            headline = f"Preview: Title Race Showdown - {home_team.name} vs {away_team.name}"
+            preview = f"Two title contenders are set to clash as {home_team.name} prepare to host {away_team.name} in what could be a season-defining encounter."
         elif importance_level == "derby":
-            headline = f"Local Derby: {home_team.name} vs {away_team.name}"
-            preview = f"Pride is at stake as local rivals {home_team.name} and {away_team.name} face off in this heated derby match."
+            headline = f"Preview: Local Derby - {home_team.name} vs {away_team.name}"
+            preview = f"Pride will be at stake when local rivals {home_team.name} and {away_team.name} face off in this upcoming heated derby match."
         elif importance_level == "relegation":
-            headline = f"Relegation Battle: {home_team.name} vs {away_team.name}"
-            preview = f"Six-pointer alert! Both {home_team.name} and {away_team.name} desperately need points in this crucial relegation clash."
+            headline = f"Preview: Relegation Battle - {home_team.name} vs {away_team.name}"
+            preview = f"Six-pointer alert! Both {home_team.name} and {away_team.name} desperately need points in this crucial upcoming relegation clash."
         else:  # high importance
-            headline = f"Big Match: {home_team.name} vs {away_team.name}"
-            preview = f"High-stakes encounter as {home_team.name} take on {away_team.name} in a match that could shape their season."
+            headline = f"Preview: Big Match - {home_team.name} vs {away_team.name}"
+            preview = f"High-stakes encounter ahead as {home_team.name} prepare to take on {away_team.name} in a match that could shape their season."
         
         # Get some media views for additional context
         home_media = await game_tools.get_media_views("team", home_team.id)
@@ -495,7 +495,7 @@ async def generate_match_media_preview(home_team, away_team, importance_level: s
         home_outlets = home_media.get("media_coverage", [])
         if home_outlets:
             outlet = max(home_outlets, key=lambda x: x.get("reach", 0))
-            source = outlet.get("outlet_name", "Media Source")
+            source = outlet.get("outlet_name", "Football Press")
         else:
             source = "Football Press"
         
@@ -503,8 +503,12 @@ async def generate_match_media_preview(home_team, away_team, importance_level: s
             "headline": headline,
             "preview": preview,
             "source": source,
-            "importance": importance_level
+            "importance": importance_level,
+            "type": "match_preview"  # Explicitly mark this as a preview
         }
+    
+    except Exception as e:
+        print(f"Error generating media preview: {e}")
     
     except Exception as e:
         print(f"Error generating media preview: {e}")

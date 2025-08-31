@@ -245,11 +245,20 @@ class GameOrchestrator:
             )
             self.event_store.append_event(event)
         
-        # Generate match reports for important matches
+        # Generate match reports for important matches that have been completed
         match_reports = []
         for match in fixtures:
+            # CRITICAL: Only generate reports for completed matches
+            if not match.finished:
+                continue
+                
             # Get match events for this specific match
             match_specific_events = [e for e in all_events if hasattr(e, 'match_id') and e.match_id == match.id]
+            
+            # Verify that the match actually ended by checking for MatchEnded event
+            match_ended = any(e.event_type == "MatchEnded" for e in match_specific_events)
+            if not match_ended:
+                continue
             
             if match_specific_events:
                 # Determine match importance
@@ -259,7 +268,7 @@ class GameOrchestrator:
                 if home_team and away_team:
                     importance = self._determine_match_importance(home_team, away_team, match.league)
                     
-                    # Generate reports for important matches
+                    # Generate reports for important completed matches only
                     if importance != "normal":
                         reports = await self.brain_orchestrator.process_match_reports(
                             match_specific_events, self.world, importance
