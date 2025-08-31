@@ -142,6 +142,112 @@ async def event_stream() -> EventSourceResponse:
     return EventSourceResponse(generate_events())
 
 
+@app.get("/api/news")
+async def get_news_feed(limit: int = 20) -> dict:
+    """Get news feed combining recent match reports and upcoming fixtures."""
+    try:
+        # Get recent match reports
+        all_events = orchestrator.event_store.get_events()
+        media_events = [e for e in all_events if e.event_type == "MediaStoryPublished"]
+        
+        # Sort by timestamp (most recent first)
+        media_events.sort(key=lambda e: e.timestamp, reverse=True)
+        recent_media_events = media_events[:10]  # Limit reports to make room for fixtures
+        
+        # Get upcoming fixtures
+        fixtures = orchestrator.get_current_matchday_fixtures()[:10]  # Limit fixtures
+        
+        # Group news by league
+        news_by_league = {}
+        
+        # Process match reports
+        for event in recent_media_events:
+            # Get media outlet information
+            outlet = orchestrator.world.get_media_outlet_by_id(event.media_outlet_id)
+            outlet_name = outlet.name if outlet else "Unknown Outlet"
+            
+            # Get team names and leagues for entities mentioned
+            team_names = []
+            leagues = set()
+            for entity_id in event.entities_mentioned:
+                team = orchestrator.world.get_team_by_id(entity_id)
+                if team:
+                    team_names.append(team.name)
+                    leagues.add(team.league)
+            
+            # Use first league found, or "General" if none
+            league = list(leagues)[0] if leagues else "General"
+            
+            if league not in news_by_league:
+                news_by_league[league] = {"recent_reports": [], "upcoming_matches": []}
+            
+            news_by_league[league]["recent_reports"].append({
+                "id": event.id,
+                "type": "report",
+                "timestamp": event.timestamp.isoformat(),
+                "headline": event.headline,
+                "story_type": event.story_type,
+                "sentiment": event.sentiment,
+                "outlet_name": outlet_name,
+                "teams_mentioned": team_names
+            })
+        
+        # Process upcoming fixtures
+        for match in fixtures:
+            home_team = orchestrator.world.get_team_by_id(match.home_team_id)
+            away_team = orchestrator.world.get_team_by_id(match.away_team_id)
+            
+            league = match.league
+            if league not in news_by_league:
+                news_by_league[league] = {"recent_reports": [], "upcoming_matches": []}
+            
+            fixture_data = {
+                "id": match.id,
+                "type": "upcoming_match",
+                "home_team": home_team.name,
+                "away_team": away_team.name,
+                "league": match.league,
+                "matchday": match.matchday,
+                "finished": match.finished,
+                "prediction": None,
+                "importance": "normal",
+                "media_preview": None
+            }
+            
+            # Determine match importance
+            importance_level = determine_match_importance(home_team, away_team, match.league, orchestrator.world)
+            fixture_data["importance"] = importance_level
+            
+            # Get match prediction if tools are available and match not finished
+            if not match.finished and orchestrator.game_tools:
+                try:
+                    prediction = await orchestrator.game_tools.get_match_predictions(
+                        match.home_team_id, match.away_team_id
+                    )
+                    if "error" not in prediction:
+                        fixture_data["prediction"] = prediction
+                except Exception as e:
+                    print(f"Failed to get prediction for {home_team.name} vs {away_team.name}: {e}")
+            
+            # Generate media preview for important matches
+            if importance_level in ["high", "derby", "title_race"]:
+                try:
+                    media_preview = await generate_match_media_preview(
+                        home_team, away_team, importance_level, orchestrator.game_tools
+                    )
+                    fixture_data["media_preview"] = media_preview
+                except Exception as e:
+                    print(f"Failed to get media preview for {home_team.name} vs {away_team.name}: {e}")
+            
+            news_by_league[league]["upcoming_matches"].append(fixture_data)
+        
+        return {
+            "news_by_league": news_by_league
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/match-reports")
 async def get_match_reports(limit: int = 20) -> dict:
     """Get recent match reports from media outlets."""
