@@ -355,6 +355,139 @@ Career Summary:"""
             print(f"Error generating career summary via LM Studio: {e}")
             # Fallback to a simple summary
             return f"{player.name} is a {player.age}-year-old {player.position.value} currently playing for {team_name}. With an overall rating of {player.overall_rating}, they continue to contribute to the team's efforts this season."
+    
+    async def generate_match_reports(
+        self,
+        match_events: List[MatchEvent],
+        world: GameWorld,
+        importance: str
+    ) -> List["MediaStory"]:
+        """Generate match reports using LM Studio for important matches."""
+        # Import here to avoid circular imports
+        from .llm import MediaStory
+        
+        if importance == "normal":
+            # Don't generate reports for normal matches
+            return []
+        
+        # Get match information from events
+        match_id = None
+        home_score = 0
+        away_score = 0
+        
+        for event in match_events:
+            if hasattr(event, 'match_id'):
+                match_id = event.match_id
+            if hasattr(event, 'home_score') and hasattr(event, 'away_score'):
+                home_score = event.home_score
+                away_score = event.away_score
+        
+        if not match_id:
+            return []
+        
+        # Find the match to get team information
+        match = world.get_match_by_id(match_id)
+        if not match:
+            return []
+        
+        home_team = world.get_team_by_id(match.home_team_id)
+        away_team = world.get_team_by_id(match.away_team_id)
+        
+        if not home_team or not away_team:
+            return []
+        
+        # Build context for the LLM
+        events_summary = self._summarize_match_events(match_events)
+        
+        # Create prompt for match report generation
+        prompt = f"""You are a sports journalist writing match reports for important football matches. Generate headlines and determine sentiment for this match:
+
+Match: {home_team.name} {home_score} - {away_score} {away_team.name}
+Match Importance: {importance}
+
+Match Events:
+{events_summary}
+
+Context:
+- {importance} match type
+- Home team: {home_team.name} (League position based on {home_team.points} points)
+- Away team: {away_team.name} (League position based on {away_team.points} points)
+
+Generate 2-3 different headlines from different media perspectives. Each headline should:
+1. Reflect the match importance ({importance})
+2. Focus on the key story of the match
+3. Be engaging and journalistic
+4. Include sentiment (-100 to 100 scale)
+
+Return as JSON array with format:
+[
+  {{
+    "headline": "Match headline here",
+    "sentiment": 25,
+    "story_type": "match_report"
+  }}
+]
+
+Headlines:"""
+        
+        try:
+            llm_response = await self._make_llm_request(prompt)
+            
+            # Try to parse JSON response
+            try:
+                import json
+                headlines_data = json.loads(llm_response)
+                if not isinstance(headlines_data, list):
+                    headlines_data = [headlines_data]
+            except (json.JSONDecodeError, TypeError):
+                # Fallback if JSON parsing fails
+                headlines_data = [{
+                    "headline": f"{home_team.name} vs {away_team.name}: {importance} clash ends {home_score}-{away_score}",
+                    "sentiment": 0,
+                    "story_type": "match_report"
+                }]
+            
+            # Generate stories from the headlines
+            stories = []
+            outlets = list(world.media_outlets.values())
+            num_stories = min(len(headlines_data), len(outlets), 3)
+            
+            for i in range(num_stories):
+                headline_data = headlines_data[i]
+                outlet = outlets[i]
+                
+                # Apply outlet bias to sentiment
+                home_bias = outlet.bias_towards_teams.get(home_team.id, 0)
+                away_bias = outlet.bias_towards_teams.get(away_team.id, 0)
+                
+                base_sentiment = headline_data.get("sentiment", 0)
+                if home_score > away_score:
+                    adjusted_sentiment = base_sentiment + home_bias - away_bias
+                elif away_score > home_score:
+                    adjusted_sentiment = base_sentiment + away_bias - home_bias
+                else:
+                    adjusted_sentiment = base_sentiment + (home_bias + away_bias) // 2
+                
+                # Clamp sentiment
+                adjusted_sentiment = max(-100, min(100, adjusted_sentiment))
+                
+                story = MediaStory(
+                    media_outlet_id=outlet.id,
+                    headline=headline_data.get("headline", f"Match Report: {home_team.name} vs {away_team.name}"),
+                    story_type="match_report",
+                    entities_mentioned=[home_team.id, away_team.id],
+                    sentiment=adjusted_sentiment,
+                    importance=importance
+                )
+                
+                stories.append(story)
+            
+            return stories
+            
+        except Exception as e:
+            print(f"Error generating match reports via LM Studio: {e}")
+            # Return empty list on error
+            return []
 
     async def __aenter__(self):
         """Async context manager entry."""

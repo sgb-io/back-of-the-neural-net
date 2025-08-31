@@ -8,8 +8,8 @@ from typing import List, Optional, Dict, Any
 from .config import get_config, Config
 from .data import create_sample_world
 from .entities import GameWorld, League, Match
-from .events import EventStore, MatchEnded, MatchScheduled, MatchStarted, SoftStateUpdated, WorldInitialized
-from .llm import BrainOrchestrator, MockLLMProvider
+from .events import EventStore, MatchEnded, MatchScheduled, MatchStarted, SoftStateUpdated, WorldInitialized, MediaStoryPublished
+from .llm import BrainOrchestrator, MockLLMProvider, MediaStory
 from .llm_mcp import MockToolsLLMProvider, ToolsLLMProvider
 from .llm_lmstudio import LMStudioProvider
 from .game_tools import GameStateTools
@@ -245,6 +245,38 @@ class GameOrchestrator:
             )
             self.event_store.append_event(event)
         
+        # Generate match reports for important matches
+        match_reports = []
+        for match in fixtures:
+            # Get match events for this specific match
+            match_specific_events = [e for e in all_events if hasattr(e, 'match_id') and e.match_id == match.id]
+            
+            if match_specific_events:
+                # Determine match importance
+                home_team = self.world.get_team_by_id(match.home_team_id)
+                away_team = self.world.get_team_by_id(match.away_team_id)
+                
+                if home_team and away_team:
+                    importance = self._determine_match_importance(home_team, away_team, match.league)
+                    
+                    # Generate reports for important matches
+                    if importance != "normal":
+                        reports = await self.brain_orchestrator.process_match_reports(
+                            match_specific_events, self.world, importance
+                        )
+                        
+                        # Create MediaStoryPublished events
+                        for report in reports:
+                            story_event = MediaStoryPublished(
+                                media_outlet_id=report.media_outlet_id,
+                                headline=report.headline,
+                                story_type=report.story_type,
+                                entities_mentioned=report.entities_mentioned,
+                                sentiment=report.sentiment
+                            )
+                            self.event_store.append_event(story_event)
+                            match_reports.append(report)
+        
         # Advance to next matchday
         self._advance_matchday()
         
@@ -252,7 +284,8 @@ class GameOrchestrator:
             "status": "matches_completed",
             "matches_played": len(fixtures),
             "events": [event.model_dump() for event in all_events],
-            "soft_updates": [update.model_dump() for update in soft_updates]
+            "soft_updates": [update.model_dump() for update in soft_updates],
+            "match_reports": [report.model_dump() for report in match_reports]
         }
     
     async def _simulate_match(self, match: Match) -> List:
@@ -423,3 +456,49 @@ class GameOrchestrator:
             "get_media_views",
             "generate_random"
         ]
+    
+    def _determine_match_importance(self, home_team, away_team, league: str) -> str:
+        """Determine the importance level of a match."""
+        try:
+            league_table = self.world.get_league_table(league)
+            if not league_table:
+                return "normal"
+            
+            # Find team positions in table
+            home_position = None
+            away_position = None
+            
+            for i, team in enumerate(league_table, 1):
+                if team.id == home_team.id:
+                    home_position = i
+                elif team.id == away_team.id:
+                    away_position = i
+            
+            if home_position is None or away_position is None:
+                return "normal"
+            
+            # Top of table clash (both teams in top 3)
+            if home_position <= 3 and away_position <= 3:
+                return "title_race"
+            
+            # One team in top 3, other in top 6
+            if (home_position <= 3 and away_position <= 6) or (away_position <= 3 and home_position <= 6):
+                return "high"
+            
+            # Check for derby matches (same city/region - simple check based on name similarity)
+            home_words = set(home_team.name.lower().split())
+            away_words = set(away_team.name.lower().split())
+            
+            # Common words that might indicate same region
+            if home_words & away_words:  # If they share any words
+                return "derby"
+            
+            # Both teams in bottom 4 (relegation battle)
+            total_teams = len(league_table)
+            if home_position >= total_teams - 3 and away_position >= total_teams - 3:
+                return "relegation"
+            
+            return "normal"
+        except Exception as e:
+            print(f"Error in _determine_match_importance: {e}")
+            return "normal"

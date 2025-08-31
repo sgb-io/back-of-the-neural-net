@@ -140,38 +140,62 @@ class EventStore:
     """SQLite-based event store for the game world."""
     
     def __init__(self, db_path: str = "game.db") -> None:
-        self.db_path = Path(db_path)
-        self._init_db()
+        # Handle in-memory database specially
+        if db_path == ":memory:":
+            self.db_path = ":memory:"
+            # For in-memory databases, keep a persistent connection
+            self._connection = sqlite3.connect(":memory:")
+            self._init_db_with_connection(self._connection)
+        else:
+            self.db_path = Path(db_path)
+            self._connection = None
+            self._init_db()
     
     def _init_db(self) -> None:
-        """Initialize the SQLite database schema."""
+        """Initialize the SQLite database schema for file-based databases."""
+        print(f"Initializing database at: {self.db_path}")
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS events (
-                    id TEXT PRIMARY KEY,
-                    timestamp TEXT NOT NULL,
-                    event_type TEXT NOT NULL,
-                    data TEXT NOT NULL,
-                    sequence_number INTEGER
-                )
-            """)
-            
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS snapshots (
-                    id TEXT PRIMARY KEY,
-                    timestamp TEXT NOT NULL,
-                    sequence_number INTEGER NOT NULL,
-                    data TEXT NOT NULL
-                )
-            """)
-            
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type)")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_events_sequence ON events(sequence_number)")
+            self._init_db_with_connection(conn)
+    
+    def _init_db_with_connection(self, conn: sqlite3.Connection) -> None:
+        """Initialize database schema with given connection."""
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS events (
+                id TEXT PRIMARY KEY,
+                timestamp TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                data TEXT NOT NULL,
+                sequence_number INTEGER
+            )
+        """)
+        
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS snapshots (
+                id TEXT PRIMARY KEY,
+                timestamp TEXT NOT NULL,
+                sequence_number INTEGER NOT NULL,
+                data TEXT NOT NULL
+            )
+        """)
+        
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_sequence ON events(sequence_number)")
+        conn.commit()
+        print("Database tables created successfully")
+    
+    def _get_connection(self) -> sqlite3.Connection:
+        """Get database connection."""
+        if self._connection:
+            return self._connection
+        else:
+            return sqlite3.connect(self.db_path)
     
     def append_event(self, event: Event) -> None:
         """Append an event to the store."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        if self._connection:
+            # For in-memory databases, use persistent connection
+            cursor = self._connection.cursor()
             
             # Get next sequence number
             cursor.execute("SELECT COALESCE(MAX(sequence_number), 0) + 1 FROM events")
@@ -187,6 +211,26 @@ class EventStore:
                 event.model_dump_json(),
                 sequence_number
             ))
+            self._connection.commit()
+        else:
+            # For file-based databases, create new connection
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Get next sequence number
+                cursor.execute("SELECT COALESCE(MAX(sequence_number), 0) + 1 FROM events")
+                sequence_number = cursor.fetchone()[0]
+                
+                cursor.execute("""
+                    INSERT INTO events (id, timestamp, event_type, data, sequence_number)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (
+                    event.id,
+                    event.timestamp.isoformat(),
+                    event.event_type,
+                    event.model_dump_json(),
+                    sequence_number
+                ))
     
     def get_events(
         self, 
@@ -195,7 +239,12 @@ class EventStore:
         limit: Optional[int] = None
     ) -> List[Event]:
         """Retrieve events from the store."""
-        with sqlite3.connect(self.db_path) as conn:
+        if self._connection:
+            conn = self._connection
+        else:
+            conn = sqlite3.connect(self.db_path)
+        
+        try:
             query = "SELECT data, event_type FROM events WHERE 1=1"
             params = []
             
@@ -225,13 +274,21 @@ class EventStore:
                     events.append(event_class.model_validate(event_data))
             
             return events
+        finally:
+            if not self._connection:
+                conn.close()
     
     def get_latest_sequence_number(self) -> int:
         """Get the latest sequence number in the store."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        if self._connection:
+            cursor = self._connection.cursor()
             cursor.execute("SELECT COALESCE(MAX(sequence_number), 0) FROM events")
             return cursor.fetchone()[0]
+        else:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT COALESCE(MAX(sequence_number), 0) FROM events")
+                return cursor.fetchone()[0]
     
     def _get_event_class(self, event_type: str) -> Optional[Type[Event]]:
         """Get the event class for a given event type name."""
@@ -247,5 +304,6 @@ class EventStore:
             "Substitution": Substitution,
             "MatchEnded": MatchEnded,
             "SoftStateUpdated": SoftStateUpdated,
+            "MediaStoryPublished": MediaStoryPublished,
         }
         return event_classes.get(event_type)

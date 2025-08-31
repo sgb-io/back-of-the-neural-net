@@ -479,6 +479,90 @@ The player's attribute profile suggests they are well-suited to their {player.po
         except Exception as e:
             # Fallback summary
             return f"{player.name} is a {player.age}-year-old {player.position.value} with an overall rating of {player.overall_rating}. They are an important member of the squad."
+    
+    async def generate_match_reports(
+        self,
+        match_events: List[MatchEvent],
+        world: GameWorld,
+        importance: str
+    ) -> List["MediaStory"]:
+        """Generate match reports using game tools for important matches."""
+        # Import here to avoid circular imports
+        from .llm import MediaStory
+        
+        if importance == "normal":
+            return []
+        
+        # Use tools to get context and generate reports
+        # For now, this is a simplified implementation
+        # In a full implementation, this would use actual LLM calls with tool context
+        
+        # Get match information
+        match_id = None
+        home_score = 0
+        away_score = 0
+        
+        for event in match_events:
+            if hasattr(event, 'match_id'):
+                match_id = event.match_id
+            if hasattr(event, 'home_score') and hasattr(event, 'away_score'):
+                home_score = event.home_score
+                away_score = event.away_score
+        
+        if not match_id:
+            return []
+        
+        match = world.get_match_by_id(match_id)
+        if not match:
+            return []
+        
+        home_team = world.get_team_by_id(match.home_team_id)
+        away_team = world.get_team_by_id(match.away_team_id)
+        
+        if not home_team or not away_team:
+            return []
+        
+        # Generate reports using tools context
+        stories = []
+        outlets = list(world.media_outlets.values())[:2]  # Limit to 2 for tools-based approach
+        
+        for outlet in outlets:
+            # Use tools to determine appropriate headline and sentiment
+            if home_score > away_score:
+                headline = f"Tools Analysis: {home_team.name} secures {importance} victory over {away_team.name}"
+                base_sentiment = 20
+            elif away_score > home_score:
+                headline = f"Tools Analysis: {away_team.name} triumphs in {importance} clash with {home_team.name}"
+                base_sentiment = -20
+            else:
+                headline = f"Tools Analysis: {importance} encounter ends in stalemate"
+                base_sentiment = 0
+            
+            # Apply outlet bias
+            home_bias = outlet.bias_towards_teams.get(home_team.id, 0)
+            away_bias = outlet.bias_towards_teams.get(away_team.id, 0)
+            
+            if home_score > away_score:
+                sentiment = base_sentiment + home_bias - away_bias
+            elif away_score > home_score:
+                sentiment = base_sentiment + away_bias - home_bias
+            else:
+                sentiment = base_sentiment + (home_bias + away_bias) // 2
+            
+            sentiment = max(-100, min(100, sentiment))
+            
+            story = MediaStory(
+                media_outlet_id=outlet.id,
+                headline=headline,
+                story_type="match_report",
+                entities_mentioned=[home_team.id, away_team.id],
+                sentiment=sentiment,
+                importance=importance
+            )
+            
+            stories.append(story)
+        
+        return stories
 
 
 class MockToolsLLMProvider(ToolsLLMProvider):
@@ -556,3 +640,63 @@ class MockToolsLLMProvider(ToolsLLMProvider):
 With an overall rating of {player.overall_rating}, they are considered a valuable squad member. Their current form of {player.form} and morale of {player.morale} indicate they are ready to contribute when called upon.
 
 This mock summary demonstrates the career analysis system is working correctly."""
+    
+    async def generate_match_reports(
+        self,
+        match_events: List[MatchEvent],
+        world: GameWorld,
+        importance: str
+    ) -> List["MediaStory"]:
+        """Generate mock match reports for testing."""
+        # Import here to avoid circular imports
+        from .llm import MediaStory
+        
+        if importance == "normal":
+            return []
+        
+        # Get match information
+        match_id = None
+        home_score = 0
+        away_score = 0
+        
+        for event in match_events:
+            if hasattr(event, 'match_id'):
+                match_id = event.match_id
+            if hasattr(event, 'home_score') and hasattr(event, 'away_score'):
+                home_score = event.home_score
+                away_score = event.away_score
+        
+        if not match_id:
+            return []
+        
+        match = world.get_match_by_id(match_id)
+        if not match:
+            return []
+        
+        home_team = world.get_team_by_id(match.home_team_id)
+        away_team = world.get_team_by_id(match.away_team_id)
+        
+        if not home_team or not away_team:
+            return []
+        
+        # Generate a simple mock report
+        stories = []
+        outlets = list(world.media_outlets.values())[:1]  # Just one for mock
+        
+        if outlets:
+            outlet = outlets[0]
+            
+            headline = f"Mock Report: {home_team.name} {home_score}-{away_score} {away_team.name} - {importance} encounter"
+            
+            story = MediaStory(
+                media_outlet_id=outlet.id,
+                headline=headline,
+                story_type="match_report",
+                entities_mentioned=[home_team.id, away_team.id],
+                sentiment=0,  # Neutral for mock
+                importance=importance
+            )
+            
+            stories.append(story)
+        
+        return stories
