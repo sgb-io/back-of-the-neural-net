@@ -142,6 +142,55 @@ async def event_stream() -> EventSourceResponse:
     return EventSourceResponse(generate_events())
 
 
+@app.get("/api/match-reports")
+async def get_match_reports(limit: int = 20) -> dict:
+    """Get recent match reports from media outlets."""
+    try:
+        # Get MediaStoryPublished events
+        all_events = orchestrator.event_store.get_events()
+        media_events = [e for e in all_events if e.event_type == "MediaStoryPublished"]
+        
+        # Sort by timestamp (most recent first) and limit
+        media_events.sort(key=lambda e: e.timestamp, reverse=True)
+        recent_media_events = media_events[:limit]
+        
+        reports = []
+        for event in recent_media_events:
+            # Get media outlet information
+            outlet = orchestrator.world.get_media_outlet_by_id(event.media_outlet_id)
+            outlet_name = outlet.name if outlet else "Unknown Outlet"
+            outlet_type = outlet.outlet_type if outlet else "Unknown"
+            outlet_credibility = outlet.credibility if outlet else 50
+            
+            # Get team names for entities mentioned
+            team_names = []
+            for entity_id in event.entities_mentioned:
+                team = orchestrator.world.get_team_by_id(entity_id)
+                if team:
+                    team_names.append(team.name)
+            
+            reports.append({
+                "id": event.id,
+                "timestamp": event.timestamp.isoformat(),
+                "headline": event.headline,
+                "story_type": event.story_type,
+                "sentiment": event.sentiment,
+                "outlet": {
+                    "name": outlet_name,
+                    "type": outlet_type,
+                    "credibility": outlet_credibility
+                },
+                "teams_mentioned": team_names
+            })
+        
+        return {
+            "match_reports": reports,
+            "total": len(reports)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/leagues/{league_id}/table")
 async def get_league_table(league_id: str) -> dict:
     """Get the league table for a specific league."""

@@ -153,7 +153,6 @@ class EventStore:
     
     def _init_db(self) -> None:
         """Initialize the SQLite database schema for file-based databases."""
-        print(f"Initializing database at: {self.db_path}")
         with sqlite3.connect(self.db_path) as conn:
             self._init_db_with_connection(conn)
     
@@ -182,7 +181,6 @@ class EventStore:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_sequence ON events(sequence_number)")
         conn.commit()
-        print("Database tables created successfully")
     
     def _get_connection(self) -> sqlite3.Connection:
         """Get database connection."""
