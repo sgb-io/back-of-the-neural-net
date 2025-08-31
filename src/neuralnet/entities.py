@@ -202,8 +202,8 @@ class StaffMember(BaseModel):
 
 class GameWorld(BaseModel):
     """The complete game world state."""
-    season: int = Field(default=2024)
-    current_date: str = Field(default="2024-01-01")  # Simple date representation
+    season: int = Field(default=2025)
+    current_date: str = Field(default="2025-08-01")  # Simple date representation
     
     # Entities
     leagues: Dict[str, League] = Field(default_factory=dict)

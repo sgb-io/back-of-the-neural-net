@@ -207,6 +207,10 @@ export default function Home() {
       <header className="header">
         <h1>⚽ Back of the Neural Net</h1>
         <p>Proper football. Artificial brains.</p>
+        <div className="game-info">
+          <span className="season">Season {worldState.season}</span>
+          <span className="date">{worldState.current_date}</span>
+        </div>
       </header>
 
       <div className="controls">

@@ -2,6 +2,7 @@
 
 import asyncio
 import uuid
+from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
 
 from .config import get_config, Config
@@ -273,15 +274,30 @@ class GameOrchestrator:
         return match_events
     
     def _advance_matchday(self) -> None:
-        """Advance all leagues to the next matchday."""
+        """Advance all leagues to the next matchday and advance the date by one week."""
         for league in self.world.leagues.values():
             if not league.is_season_complete():
                 league.current_matchday += 1
+        
+        # Advance the current date by one week
+        self._advance_date_by_week()
+    
+    def _advance_date_by_week(self) -> None:
+        """Advance the current date by one week."""
+        try:
+            current_date = datetime.strptime(self.world.current_date, "%Y-%m-%d")
+            new_date = current_date + timedelta(weeks=1)
+            self.world.current_date = new_date.strftime("%Y-%m-%d")
+        except ValueError:
+            # If date format is invalid, fallback to a reasonable default
+            print(f"Warning: Invalid date format '{self.world.current_date}', resetting to 2025-08-01")
+            self.world.current_date = "2025-08-01"
     
     def get_world_state(self) -> dict:
         """Get the current world state for the API."""
         return {
             "season": self.world.season,
+            "current_date": self.world.current_date,
             "leagues": {
                 league_id: {
                     "name": league.name,
