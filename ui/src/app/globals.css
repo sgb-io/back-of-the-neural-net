@@ -225,7 +225,7 @@ code {
 }
 
 .news-section {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .news-section:last-child {
@@ -242,7 +242,7 @@ code {
 .news-item {
   padding: 12px;
   border-radius: 6px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   background: white;
   border: 1px solid #eee;
   transition: background-color 0.2s;
@@ -266,6 +266,17 @@ code {
 
 .important-match {
   border-left: 3px solid #e17055;
+}
+
+.normal-match {
+  padding: 8px 12px;
+  border-left: 3px solid #d0d0d0;
+}
+
+.match-info-compact {
+  font-size: 11px;
+  color: #888;
+  margin-top: 2px;
 }
 
 .news-headline {
