@@ -14,10 +14,86 @@ from sse_starlette.sse import EventSourceResponse
 
 from .config import get_config, validate_llm_config
 from .orchestrator import GameOrchestrator
+from .events import Goal, YellowCard, RedCard, Substitution, MatchStarted, MatchEnded
 
 
 # Global orchestrator instance - will be initialized in lifespan
 orchestrator: GameOrchestrator = None
+
+
+def calculate_player_season_stats(player_name: str) -> dict:
+    """Calculate player statistics from match events."""
+    if not orchestrator:
+        return {
+            "goals": 0,
+            "assists": 0,
+            "yellow_cards": 0,
+            "red_cards": 0,
+            "matches_played": 0,
+            "minutes_played": 0
+        }
+    
+    # Get all events from the event store
+    all_events = orchestrator.event_store.get_events()
+    
+    # Track player statistics
+    stats = {
+        "goals": 0,
+        "assists": 0,
+        "yellow_cards": 0,
+        "red_cards": 0,
+        "matches_played": 0,
+        "minutes_played": 0
+    }
+    
+    # Track matches the player has participated in to avoid counting duplicates
+    matches_played_in = set()
+    
+    for event in all_events:
+        # Count goals scored by this player
+        if isinstance(event, Goal) and event.scorer == player_name:
+            stats["goals"] += 1
+        
+        # Count assists by this player
+        elif isinstance(event, Goal) and hasattr(event, 'assist') and event.assist == player_name:
+            stats["assists"] += 1
+        
+        # Count yellow cards for this player
+        elif isinstance(event, YellowCard) and event.player == player_name:
+            stats["yellow_cards"] += 1
+        
+        # Count red cards for this player
+        elif isinstance(event, RedCard) and event.player == player_name:
+            stats["red_cards"] += 1
+        
+        # Track matches played - use MatchStarted events to identify when a player participated
+        elif isinstance(event, MatchStarted):
+            # For now, we'll assume all players in the squad played
+            # This is a simplification - in a real system, you'd track substitutions
+            # to determine who actually played
+            match_id = event.match_id
+            
+            # Get the match details to see if this player's team was involved
+            match = orchestrator.world.get_match_by_id(match_id)
+            if match:
+                home_team = orchestrator.world.get_team_by_id(match.home_team_id)
+                away_team = orchestrator.world.get_team_by_id(match.away_team_id)
+                
+                # Check if player is in either team
+                player_in_match = False
+                if home_team and any(p.name == player_name for p in home_team.players):
+                    player_in_match = True
+                elif away_team and any(p.name == player_name for p in away_team.players):
+                    player_in_match = True
+                
+                if player_in_match and match_id not in matches_played_in:
+                    matches_played_in.add(match_id)
+                    stats["matches_played"] += 1
+                    # For now, assume full 90 minutes played per match
+                    # In a real system, you'd track substitutions and actual minutes
+                    stats["minutes_played"] += 90
+    
+    return stats
 
 
 @asynccontextmanager
@@ -734,16 +810,8 @@ async def get_player_details(player_id: str) -> dict:
         if not current_team:
             raise HTTPException(status_code=404, detail="Player's team not found")
         
-        # Calculate season stats (for now, just basic stats - can be enhanced later)
-        # This is a placeholder for season-specific statistics
-        season_stats = {
-            "goals": 0,  # Would need to track from match events
-            "assists": 0,  # Would need to track from match events
-            "yellow_cards": player.yellow_cards,
-            "red_cards": player.red_cards,
-            "matches_played": 0,  # Would need to calculate from matches
-            "minutes_played": 0   # Would need to track from match events
-        }
+        # Calculate season stats from match events
+        season_stats = calculate_player_season_stats(player.name)
         
         return {
             "id": player.id,
