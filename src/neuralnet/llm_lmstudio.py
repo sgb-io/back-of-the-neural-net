@@ -404,19 +404,35 @@ Career Summary:"""
         if not home_team or not away_team:
             return []
         
+        # Import the analysis function
+        from .llm import analyze_match_events_for_story
+        
+        # Analyze match events for storylines
+        storylines = analyze_match_events_for_story(match_events, world)
+        
         # Build context for the LLM
         events_summary = self._summarize_match_events(match_events)
         
-        # Create prompt for match report generation
-        prompt = f"""You are a sports journalist writing match reports for important football matches. Generate headlines and determine sentiment for this match:
+        # Create enhanced prompt for match report generation
+        prompt = f"""You are a sports journalist writing match reports for important football matches. Generate headlines that incorporate specific match events and player performances.
 
 Match: {home_team.name} {home_score} - {away_score} {away_team.name}
 Match Importance: {importance}
 
-Match Events:
+Match Events Summary:
 {events_summary}
 
-Context:
+Key Storylines:
+- Goal scorers: {', '.join([f"{p} ({c} goals)" for p, c in storylines["scorers"].items()])}
+- Players with multiple goals: {', '.join([f"{p['player']} ({p['goals']} goals)" for p in storylines["multiple_goals"]]) if storylines["multiple_goals"] else "None"}
+- Red cards: {', '.join([f"{r['player']} ({r['minute']}', {r['reason']})" for r in storylines["red_cards"]]) if storylines["red_cards"] else "None"}
+- Assists: {', '.join([f"{p} ({c} assists)" for p, c in storylines["assisters"].items()]) if storylines["assisters"] else "None"}
+
+Instructions:
+1. Mention specific players (especially goal scorers, red card recipients, assist providers)
+2. Reference key match incidents (goals, cards, substitutions)
+3. Make headlines engaging and specific rather than generic
+4. Consider the match importance ({importance}) in the tone
 - {importance} match type
 - Home team: {home_team.name} (League position based on {home_team.points} points)
 - Away team: {away_team.name} (League position based on {away_team.points} points)
