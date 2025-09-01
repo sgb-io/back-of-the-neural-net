@@ -37,25 +37,77 @@ class Player(BaseModel):
     form: int = Field(default=50, ge=1, le=100)  # Current form
     morale: int = Field(default=50, ge=1, le=100)  # Player morale
     fitness: int = Field(default=100, ge=1, le=100)  # Physical fitness
+    sharpness: int = Field(default=75, ge=1, le=100)  # Match sharpness/readiness
     
     # Metadata
-    age: int = Field(ge=16, le=45)
+    age: int = Field(ge=15, le=45)  # Extended range for youth development
+    peak_age: int = Field(default=27, ge=20, le=35)  # Age when player peaks
     injured: bool = Field(default=False)
+    injury_weeks_remaining: int = Field(default=0, ge=0)  # Weeks until recovery
+    suspended: bool = Field(default=False)
+    suspension_matches_remaining: int = Field(default=0, ge=0)  # Matches until suspension ends
     yellow_cards: int = Field(default=0, ge=0)
     red_cards: int = Field(default=0, ge=0)
     
     @property
+    def base_attributes(self) -> Dict[str, int]:
+        """Get base attributes before age modifiers."""
+        return {
+            "pace": self.pace,
+            "shooting": self.shooting, 
+            "passing": self.passing,
+            "defending": self.defending,
+            "physicality": self.physicality
+        }
+    
+    @property
+    def age_modified_attributes(self) -> Dict[str, int]:
+        """Get attributes modified by age curve."""
+        base_attrs = self.base_attributes
+        age_modifier = self._calculate_age_modifier()
+        
+        modified = {}
+        for attr, value in base_attrs.items():
+            # Apply age modifier (can be positive or negative)
+            modified_value = value + (value * age_modifier * 0.01)  # Age modifier as percentage
+            modified[attr] = max(1, min(100, int(modified_value)))
+        
+        return modified
+    
+    def _calculate_age_modifier(self) -> float:
+        """Calculate age modifier (-20 to +15) based on player's age curve."""
+        age_diff = self.age - self.peak_age
+        
+        if age_diff <= 0:
+            # Before peak: gradual improvement (0 to +15%)
+            years_to_peak = self.peak_age - 15  # Career start at 15
+            if years_to_peak <= 0:
+                return 15.0  # Edge case
+            progress = (self.age - 15) / years_to_peak
+            return progress * 15.0  # Up to +15% at peak
+        else:
+            # After peak: gradual decline (0 to -20%)
+            years_after_peak = age_diff
+            decline_rate = min(years_after_peak * 2.5, 20.0)  # 2.5% per year, max -20%
+            return -decline_rate
+    
+    @property
     def overall_rating(self) -> int:
         """Calculate overall player rating from attributes."""
-        # Simple average of all skill attributes
-        skills = [self.pace, self.shooting, self.passing, self.defending, self.physicality]
+        # Use age-modified attributes
+        attrs = self.age_modified_attributes
+        skills = [attrs["pace"], attrs["shooting"], attrs["passing"], attrs["defending"], attrs["physicality"]]
         base_rating = sum(skills) / len(skills)
         
-        # Factor in form and fitness
+        # Factor in form, fitness, and sharpness
         form_modifier = (self.form - 50) * 0.1  # -5 to +5 modifier
         fitness_modifier = (self.fitness - 100) * 0.05  # Penalty for low fitness
+        sharpness_modifier = (self.sharpness - 75) * 0.05  # Penalty for low sharpness
         
-        overall = base_rating + form_modifier + fitness_modifier
+        # Injury penalty
+        injury_modifier = -10 if self.injured else 0
+        
+        overall = base_rating + form_modifier + fitness_modifier + sharpness_modifier + injury_modifier
         return max(1, min(100, int(overall)))
 
 
@@ -280,3 +332,79 @@ class GameWorld(BaseModel):
             key=lambda t: (t.points, t.goal_difference, t.goals_for),
             reverse=True
         )
+    
+    def advance_weekly_progression(self) -> None:
+        """Advance weekly progression for all players (fitness, injuries, suspensions)."""
+        import random
+        rng = random.Random(42)  # Use consistent seed for weekly progression
+        
+        for player in self.players.values():
+            # Handle injury recovery
+            if player.injured and player.injury_weeks_remaining > 0:
+                player.injury_weeks_remaining -= 1
+                if player.injury_weeks_remaining <= 0:
+                    player.injured = False
+                    player.injury_weeks_remaining = 0
+            
+            # Handle suspension countdown (per match, not weekly, but we can track here)
+            # Note: Suspension countdown should happen per match, but we can reset here for testing
+            
+            # Fitness changes - natural recovery and training
+            if not player.injured:
+                # Training improves fitness gradually  
+                fitness_change = rng.randint(1, 3)  # +1 to +3 fitness per week
+                player.fitness = min(100, player.fitness + fitness_change)
+                
+                # Sharpness also improves with training
+                sharpness_change = rng.randint(1, 2)  # +1 to +2 sharpness per week  
+                player.sharpness = min(100, player.sharpness + sharpness_change)
+            else:
+                # Injured players lose fitness and sharpness
+                fitness_loss = rng.randint(2, 4)  # -2 to -4 fitness per week when injured
+                sharpness_loss = rng.randint(1, 3)  # -1 to -3 sharpness per week when injured
+                
+                player.fitness = max(1, player.fitness - fitness_loss)
+                player.sharpness = max(1, player.sharpness - sharpness_loss)
+    
+    def advance_match_progression(self, match_events: list) -> None:
+        """Advance match-based progression (suspensions, match fitness cost)."""
+        import random
+        rng = random.Random(42)
+        
+        # Get all players who participated in matches (had events)
+        participating_players = set()
+        
+        for event in match_events:
+            if hasattr(event, 'player'):
+                participating_players.add(event.player)
+            elif hasattr(event, 'scorer'):
+                participating_players.add(event.scorer)
+            elif hasattr(event, 'player_off'):
+                participating_players.add(event.player_off)
+            elif hasattr(event, 'player_on'):
+                participating_players.add(event.player_on)
+        
+        # Apply match costs to participating players
+        for player_name in participating_players:
+            # Find the player object
+            player = None
+            for p in self.players.values():
+                if p.name == player_name:
+                    player = p
+                    break
+            
+            if player and not player.injured:
+                # Playing a match costs fitness and sharpness
+                fitness_cost = rng.randint(3, 7)  # -3 to -7 fitness per match
+                sharpness_cost = rng.randint(2, 5)  # -2 to -5 sharpness per match
+                
+                player.fitness = max(1, player.fitness - fitness_cost)
+                player.sharpness = max(1, player.sharpness - sharpness_cost)
+        
+        # Handle suspension countdown for all players
+        for player in self.players.values():
+            if player.suspended and player.suspension_matches_remaining > 0:
+                player.suspension_matches_remaining -= 1
+                if player.suspension_matches_remaining <= 0:
+                    player.suspended = False
+                    player.suspension_matches_remaining = 0

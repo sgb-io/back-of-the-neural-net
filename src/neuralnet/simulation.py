@@ -6,6 +6,7 @@ from collections.abc import Generator
 from .entities import GameWorld, Match, Position, Team
 from .events import (
     Goal,
+    Injury,
     KickOff,
     MatchEnded,
     MatchEvent,
@@ -90,6 +91,7 @@ class MatchSimulator:
             ("yellow_card", 0.04), # ~3.6 yellow cards per match
             ("red_card", 0.002),   # ~0.18 red cards per match
             ("substitution", 0.01), # Limited substitutions
+            ("injury", 0.003),     # ~0.27 injuries per match
         ]
 
         total_weight = sum(weight for _, weight in choices)
@@ -113,6 +115,8 @@ class MatchSimulator:
             return self._create_red_card_event()
         elif event_type == "substitution":
             return self._create_substitution_event()
+        elif event_type == "injury":
+            return self._create_injury_event()
 
         return None
 
@@ -171,6 +175,8 @@ class MatchSimulator:
         if self._match_yellow_cards.get(player.name, 0) >= 1:
             # Convert to red card instead
             player.red_cards += 1
+            player.suspended = True
+            player.suspension_matches_remaining = 3
             return RedCard(
                 match_id=self.match.id,
                 minute=self.match.minute,
@@ -215,8 +221,10 @@ class MatchSimulator:
         reasons = ["Serious foul play", "Violent conduct", "Offensive language"]
         reason = self.rng.choice(reasons)
 
-        # Update player's red card count
+        # Update player's red card count and apply 3-match suspension
         player.red_cards += 1
+        player.suspended = True
+        player.suspension_matches_remaining = 3
 
         return RedCard(
             match_id=self.match.id,
@@ -254,20 +262,69 @@ class MatchSimulator:
 
         return None
 
+    def _create_injury_event(self) -> Injury | None:
+        """Create an injury event."""
+        team = self.rng.choice([self.home_team, self.away_team])
+        
+        # Filter out already injured players
+        available_players = [p for p in team.players if not p.injured]
+        if not available_players:
+            return None
+            
+        player = self.rng.choice(available_players)
+        
+        # Determine injury type and severity
+        injury_types = [
+            "Muscle strain", "Ankle sprain", "Knee injury", "Hamstring pull",
+            "Shoulder injury", "Back strain", "Concussion", "Bruised ribs"
+        ]
+        injury_type = self.rng.choice(injury_types)
+        
+        # Determine severity based on random chance
+        severity_roll = self.rng.random()
+        if severity_roll < 0.6:
+            severity = "minor"
+            weeks_out = self.rng.randint(1, 2)
+        elif severity_roll < 0.9:
+            severity = "moderate" 
+            weeks_out = self.rng.randint(3, 6)
+        else:
+            severity = "severe"
+            weeks_out = self.rng.randint(7, 16)
+        
+        # Apply injury to player
+        player.injured = True
+        player.injury_weeks_remaining = weeks_out
+        
+        return Injury(
+            match_id=self.match.id,
+            minute=self.match.minute,
+            home_score=self.match.home_score,
+            away_score=self.match.away_score,
+            player=player.name,
+            team=team.id,
+            injury_type=injury_type,
+            severity=severity,
+            weeks_out=weeks_out
+        )
+
     def _calculate_team_strength(self, team: Team) -> float:
         """Calculate overall team strength for goal probability."""
         if not team.players:
             return 1.0
 
-        # Simple average of key attacking attributes
+        # Simple average of key attacking attributes using age-modified stats
         total_strength = 0.0
         for player in team.players:
+            # Use age-modified attributes for more realistic calculations
+            attrs = player.age_modified_attributes
+            
             # Weight attacking attributes more for goal probability
             strength = (
-                player.shooting * 0.4 +
-                player.pace * 0.2 +
-                player.passing * 0.2 +
-                player.physicality * 0.1 +
+                attrs["shooting"] * 0.4 +
+                attrs["pace"] * 0.2 +
+                attrs["passing"] * 0.2 +
+                attrs["physicality"] * 0.1 +
                 player.form * 0.1  # Soft state influence
             )
             total_strength += strength
@@ -294,6 +351,12 @@ class MatchEngine:
 
         # Update team statistics
         self._update_team_stats(match)
+        
+        # Update player form based on match performance
+        self._update_player_form_after_match(events, match)
+        
+        # Update match-based progression (fitness costs, suspension countdown)
+        self.world.advance_match_progression(events)
 
         return events
 
@@ -325,3 +388,97 @@ class MatchEngine:
         else:
             home_team.draws += 1
             away_team.draws += 1
+
+    def _update_player_form_after_match(self, events: list, match: Match) -> None:
+        """Update player form based on match performance."""
+        import random
+        
+        home_team = self.world.get_team_by_id(match.home_team_id)
+        away_team = self.world.get_team_by_id(match.away_team_id)
+        
+        if not home_team or not away_team:
+            return
+        
+        # Track player performances
+        player_stats = {}
+        
+        # Initialize all players
+        for team in [home_team, away_team]:
+            for player in team.players:
+                player_stats[player.name] = {
+                    'player': player,
+                    'goals': 0,
+                    'assists': 0,
+                    'yellow_cards': 0,
+                    'red_cards': 0,
+                    'team_won': False,
+                    'team_drew': False
+                }
+        
+        # Set team result for all players
+        home_won = match.home_score > match.away_score
+        away_won = match.away_score > match.home_score
+        draw = match.home_score == match.away_score
+        
+        for player in home_team.players:
+            if player.name in player_stats:
+                player_stats[player.name]['team_won'] = home_won
+                player_stats[player.name]['team_drew'] = draw
+                
+        for player in away_team.players:
+            if player.name in player_stats:
+                player_stats[player.name]['team_won'] = away_won  
+                player_stats[player.name]['team_drew'] = draw
+        
+        # Process match events
+        for event in events:
+            if hasattr(event, 'event_type'):
+                if event.event_type == "Goal":
+                    scorer_name = getattr(event, 'scorer', None)
+                    assist_name = getattr(event, 'assist', None)
+                    
+                    if scorer_name and scorer_name in player_stats:
+                        player_stats[scorer_name]['goals'] += 1
+                    
+                    if assist_name and assist_name in player_stats:
+                        player_stats[assist_name]['assists'] += 1
+                        
+                elif event.event_type == "YellowCard":
+                    player_name = getattr(event, 'player', None)
+                    if player_name and player_name in player_stats:
+                        player_stats[player_name]['yellow_cards'] += 1
+                        
+                elif event.event_type == "RedCard":
+                    player_name = getattr(event, 'player', None)
+                    if player_name and player_name in player_stats:
+                        player_stats[player_name]['red_cards'] += 1
+        
+        # Update player form based on performance
+        rng = random.Random(42)  # Use fixed seed for consistency
+        
+        for player_name, stats in player_stats.items():
+            player = stats['player']
+            form_change = 0
+            
+            # Positive form changes
+            form_change += stats['goals'] * 3  # +3 per goal
+            form_change += stats['assists'] * 2  # +2 per assist
+            
+            if stats['team_won']:
+                form_change += 1  # +1 for team win
+            elif stats['team_drew']:
+                form_change += 0  # Neutral for draw
+            else:
+                form_change -= 1  # -1 for team loss
+            
+            # Negative form changes  
+            form_change -= stats['yellow_cards'] * 1  # -1 per yellow card
+            form_change -= stats['red_cards'] * 3  # -3 per red card
+            
+            # Add some randomness (small chance of form change regardless of performance)
+            random_factor = rng.randint(-1, 1)  # -1, 0, or +1
+            form_change += random_factor
+            
+            # Apply form change with bounds
+            new_form = max(1, min(100, player.form + form_change))
+            player.form = new_form

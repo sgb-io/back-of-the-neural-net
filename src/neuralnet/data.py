@@ -111,29 +111,40 @@ def create_fantasy_team(team_id: str, team_name: str, league: str) -> Team:
         league=league
     )
     
-    # Create a basic squad (simplified formation)
+    # Create a full squad with starting 11, subs, and squad depth (~25 players)
     positions_needed = [
-        (Position.GK, 1),
-        (Position.CB, 2),
-        (Position.LB, 1),
-        (Position.RB, 1),
-        (Position.CM, 2),
-        (Position.LM, 1),
-        (Position.RM, 1),
-        (Position.CAM, 1),
-        (Position.ST, 2),
+        # Starting 11 + key backups
+        (Position.GK, 3),    # 1 starter + 2 backups
+        (Position.CB, 4),    # 2 starters + 2 backups  
+        (Position.LB, 2),    # 1 starter + 1 backup
+        (Position.RB, 2),    # 1 starter + 1 backup
+        (Position.CM, 4),    # 2 starters + 2 backups
+        (Position.LM, 2),    # 1 starter + 1 backup
+        (Position.RM, 2),    # 1 starter + 1 backup
+        (Position.CAM, 2),   # 1 starter + 1 backup
+        (Position.LW, 2),    # Additional wing options
+        (Position.RW, 2),    # Additional wing options
+        (Position.ST, 4),    # 2 starters + 2 backups
     ]
     
     player_names = get_fantasy_player_names()
+    
+    # Use team_id as a hash to get a different starting point for each team
+    # Make sure teams have more diverse player names by using larger offsets
+    team_seed = hash(team_id) % len(player_names)
+    team_offset = (hash(team_id) // len(player_names)) % (len(player_names) // 3)  # Distribute across 1/3 of names
     name_index = 0
     
     for position, count in positions_needed:
         for i in range(count):
-            if name_index < len(player_names):
-                player_name = player_names[name_index]
+            # Use different players for each team by offsetting the index
+            actual_index = (team_seed + team_offset + name_index) % len(player_names)
+            if actual_index < len(player_names):
+                player_name = player_names[actual_index]
                 name_index += 1
             else:
-                player_name = f"Fantasy Player {name_index}"
+                player_name = f"Fantasy Player {team_id}_{name_index}"
+                name_index += 1
             
             player = create_fantasy_player(player_name, position)
             team.players.append(player)
@@ -145,70 +156,106 @@ def create_fantasy_player(name: str, position: Position) -> Player:
     """Create a fantasy player with position-appropriate stats."""
     import random
     
+    # Use a deterministic seed based on the player name for consistent generation
+    player_seed = hash(name) % (2**31)
+    player_rng = random.Random(player_seed)
+    
     # Base stats around 50, with position-specific modifiers
     base_stats = {
-        "pace": random.randint(40, 70),
-        "shooting": random.randint(40, 70),
-        "passing": random.randint(40, 70),
-        "defending": random.randint(40, 70),
-        "physicality": random.randint(40, 70),
+        "pace": player_rng.randint(40, 70),
+        "shooting": player_rng.randint(40, 70),
+        "passing": player_rng.randint(40, 70),
+        "defending": player_rng.randint(40, 70),
+        "physicality": player_rng.randint(40, 70),
     }
     
     # Position-specific stat modifications
     if position == Position.GK:
         base_stats.update({
-            "pace": random.randint(20, 40),
-            "shooting": random.randint(10, 30),
-            "passing": random.randint(40, 70),
-            "defending": random.randint(70, 95),
-            "physicality": random.randint(60, 85),
+            "pace": player_rng.randint(20, 40),
+            "shooting": player_rng.randint(10, 30),
+            "passing": player_rng.randint(40, 70),
+            "defending": player_rng.randint(70, 95),
+            "physicality": player_rng.randint(60, 85),
         })
     elif position in [Position.CB]:
         base_stats.update({
-            "pace": random.randint(30, 60),
-            "shooting": random.randint(20, 50),
-            "passing": random.randint(50, 80),
-            "defending": random.randint(70, 95),
-            "physicality": random.randint(70, 90),
+            "pace": player_rng.randint(30, 60),
+            "shooting": player_rng.randint(20, 50),
+            "passing": player_rng.randint(50, 80),
+            "defending": player_rng.randint(70, 95),
+            "physicality": player_rng.randint(70, 90),
         })
     elif position in [Position.LB, Position.RB]:
         base_stats.update({
-            "pace": random.randint(60, 85),
-            "shooting": random.randint(30, 60),
-            "passing": random.randint(60, 85),
-            "defending": random.randint(60, 80),
-            "physicality": random.randint(50, 75),
+            "pace": player_rng.randint(60, 85),
+            "shooting": player_rng.randint(30, 60),
+            "passing": player_rng.randint(60, 85),
+            "defending": player_rng.randint(60, 80),
+            "physicality": player_rng.randint(50, 75),
         })
     elif position in [Position.CM, Position.CAM]:
         base_stats.update({
-            "pace": random.randint(50, 80),
-            "shooting": random.randint(50, 80),
-            "passing": random.randint(70, 95),
-            "defending": random.randint(40, 70),
-            "physicality": random.randint(50, 75),
+            "pace": player_rng.randint(50, 80),
+            "shooting": player_rng.randint(50, 80),
+            "passing": player_rng.randint(70, 95),
+            "defending": player_rng.randint(40, 70),
+            "physicality": player_rng.randint(50, 75),
         })
     elif position in [Position.LM, Position.RM, Position.LW, Position.RW]:
         base_stats.update({
-            "pace": random.randint(70, 95),
-            "shooting": random.randint(60, 85),
-            "passing": random.randint(60, 85),
-            "defending": random.randint(30, 60),
-            "physicality": random.randint(40, 70),
+            "pace": player_rng.randint(70, 95),
+            "shooting": player_rng.randint(60, 85),
+            "passing": player_rng.randint(60, 85),
+            "defending": player_rng.randint(30, 60),
+            "physicality": player_rng.randint(40, 70),
         })
     elif position == Position.ST:
         base_stats.update({
-            "pace": random.randint(60, 90),
-            "shooting": random.randint(70, 95),
-            "passing": random.randint(50, 80),
-            "defending": random.randint(20, 50),
-            "physicality": random.randint(60, 85),
+            "pace": player_rng.randint(60, 90),
+            "shooting": player_rng.randint(70, 95),
+            "passing": player_rng.randint(50, 80),
+            "defending": player_rng.randint(20, 50),
+            "physicality": player_rng.randint(60, 85),
         })
+    
+    # Generate realistic age and peak age
+    age = player_rng.randint(18, 35)
+    # Peak age varies by position and individual differences
+    if position == Position.GK:
+        peak_age = player_rng.randint(28, 32)  # Goalkeepers peak later
+    elif position in [Position.ST, Position.LW, Position.RW]:
+        peak_age = player_rng.randint(25, 29)  # Attackers peak earlier
+    else:
+        peak_age = player_rng.randint(26, 30)  # Midfielders and defenders
+    
+    # Adjust peak age for individual variation
+    peak_age += player_rng.randint(-2, 2)
+    peak_age = max(22, min(35, peak_age))  # Keep within reasonable bounds
+    
+    # Set fitness and form based on age
+    if age < 23:
+        # Young players often have high fitness but inconsistent form
+        fitness = player_rng.randint(85, 100)
+        form = player_rng.randint(40, 70)
+    elif age > 32:
+        # Older players may have lower fitness
+        fitness = player_rng.randint(70, 95)
+        form = player_rng.randint(45, 75)
+    else:
+        # Prime age players
+        fitness = player_rng.randint(80, 100) 
+        form = player_rng.randint(45, 75)
     
     return Player(
         id=str(uuid.uuid4()),
         name=name,
         position=position,
-        age=random.randint(18, 35),
+        age=age,
+        peak_age=peak_age,
+        fitness=fitness,
+        form=form,
+        sharpness=player_rng.randint(70, 85),  # Start with reasonable sharpness
         **base_stats
     )
 
