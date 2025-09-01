@@ -220,7 +220,7 @@ export default function TeamPage({ params }: TeamPageProps) {
               {teamMatches.matches.map((match) => (
                 <Link 
                   key={match.id} 
-                  href={`/?match=${match.id}`}
+                  href={`/matches/${match.id}`}
                   className="match-item"
                 >
                   <div className="match-teams">

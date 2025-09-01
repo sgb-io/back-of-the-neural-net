@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import axios from 'axios';
-import { WorldState, MatchEvent, GoalEvent, CardEvent, SubstitutionEvent, MatchEndedEvent, AdvanceResponse, League, CompletedMatch, MatchDetail, MatchEventDetail, Fixture, NewsResponse, NewsReport, NewsMatch } from '@/types/api';
+import { WorldState, MatchEvent, GoalEvent, CardEvent, SubstitutionEvent, MatchEndedEvent, AdvanceResponse, League, CompletedMatch, NewsResponse, NewsReport, NewsMatch } from '@/types/api';
 import TeamLink from '@/components/TeamLink';
 import PlayerLink from '@/components/PlayerLink';
 
@@ -16,24 +17,11 @@ function HomeWithParams() {
   
   // New state for match browsing
   const [completedMatches, setCompletedMatches] = useState<CompletedMatch[]>([]);
-  const [selectedMatch, setSelectedMatch] = useState<MatchDetail | null>(null);
   const [isLoadingMatches, setIsLoadingMatches] = useState<boolean>(false);
-  const [isLoadingMatchDetail, setIsLoadingMatchDetail] = useState<boolean>(false);
 
   // New state for news feed
   const [newsData, setNewsData] = useState<NewsResponse | null>(null);
   const [isLoadingNews, setIsLoadingNews] = useState<boolean>(false);
-
-  // Handle URL match parameter on client side
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const matchId = urlParams.get('match');
-      if (matchId) {
-        loadMatchDetail(matchId);
-      }
-    }
-  }, []);
 
   // Load initial world state
   useEffect(() => {
@@ -122,44 +110,6 @@ function HomeWithParams() {
     }
   };
 
-  const formatMatchEvent = (event: MatchEventDetail): React.ReactElement => {
-    switch (event.event_type) {
-      case 'Goal':
-        return (
-          <span>
-            ⚽ {event.minute}&apos; GOAL! <PlayerLink playerName={event.scorer || ''} /> scores for {event.team}
-            {event.assist && <span> (assist: <PlayerLink playerName={event.assist} />)</span>}
-          </span>
-        );
-      case 'YellowCard':
-        return (
-          <span>
-            🟨 {event.minute}&apos; Yellow card for <PlayerLink playerName={event.player || ''} /> ({event.team}) - {event.reason}
-          </span>
-        );
-      case 'RedCard':
-        return (
-          <span>
-            🟥 {event.minute}&apos; Red card for <PlayerLink playerName={event.player || ''} /> ({event.team}) - {event.reason}
-          </span>
-        );
-      case 'Substitution':
-        return (
-          <span>
-            🔄 {event.minute}&apos; Substitution ({event.team}): <PlayerLink playerName={event.player_off || ''} /> ➔ <PlayerLink playerName={event.player_on || ''} />
-          </span>
-        );
-      case 'MatchEnded':
-        return <span>🏁 Full time: {event.home_team} {event.home_score} - {event.away_score} {event.away_team}</span>;
-      case 'MatchStarted':
-        return <span>🟢 Match started: {event.home_team} vs {event.away_team}</span>;
-      case 'KickOff':
-        return <span>⚽ Kick off!</span>;
-      default:
-        return <span>{event.event_type}</span>;
-    }
-  };
-
   const loadCompletedMatches = async (): Promise<void> => {
     setIsLoadingMatches(true);
     try {
@@ -170,19 +120,6 @@ function HomeWithParams() {
       setStatus('Failed to load completed matches');
     } finally {
       setIsLoadingMatches(false);
-    }
-  };
-
-  const loadMatchDetail = async (matchId: string): Promise<void> => {
-    setIsLoadingMatchDetail(true);
-    try {
-      const response = await axios.get<MatchDetail>(`/api/matches/${matchId}/events`);
-      setSelectedMatch(response.data);
-    } catch (error) {
-      console.error('Failed to load match detail:', error);
-      setStatus('Failed to load match detail');
-    } finally {
-      setIsLoadingMatchDetail(false);
     }
   };
 
@@ -391,62 +328,31 @@ function HomeWithParams() {
         </div>
       )}
 
-      <div className="panel events-panel">
+      <div className="panel events-panel" id="browse-matches">
         <h2>Browse Matches</h2>
         
-        {selectedMatch ? (
-          <div className="match-detail">
-            <div className="match-detail-header">
-              <button 
-                className="back-button" 
-                onClick={() => setSelectedMatch(null)}
+        <div className="matches-list">
+          {isLoadingMatches ? (
+            <div className="loading">Loading matches...</div>
+          ) : completedMatches.length === 0 ? (
+            <div>No completed matches yet. Advance the simulation to see match history.</div>
+          ) : (
+            completedMatches.map((match) => (
+              <Link 
+                key={match.id} 
+                href={`/matches/${match.id}`}
+                className="match-item"
               >
-                ← Back to Matches
-              </button>
-              <h3>
-                <TeamLink teamName={selectedMatch.match.home_team} /> {selectedMatch.match.home_score} - {selectedMatch.match.away_score} <TeamLink teamName={selectedMatch.match.away_team} />
-              </h3>
-              <div className="match-info">
-                {selectedMatch.match.league} - Matchday {selectedMatch.match.matchday} (Season {selectedMatch.match.season})
-              </div>
-            </div>
-            
-            {isLoadingMatchDetail ? (
-              <div className="loading">Loading match events...</div>
-            ) : (
-              <div className="events-list">
-                {selectedMatch.events.map((event, index) => (
-                  <div key={index} className="event">
-                    <div className="event-type">{formatMatchEvent(event)}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="matches-list">
-            {isLoadingMatches ? (
-              <div className="loading">Loading matches...</div>
-            ) : completedMatches.length === 0 ? (
-              <div>No completed matches yet. Advance the simulation to see match history.</div>
-            ) : (
-              completedMatches.map((match) => (
-                <div 
-                  key={match.id} 
-                  className="match-item"
-                  onClick={() => loadMatchDetail(match.id)}
-                >
-                  <div className="match-teams">
-                    <TeamLink teamName={match.home_team} /> {match.home_score} - {match.away_score} <TeamLink teamName={match.away_team} />
-                  </div>
-                  <div className="match-info">
-                    {match.league} - MD{match.matchday} (S{match.season})
-                  </div>
+                <div className="match-teams">
+                  <TeamLink teamName={match.home_team} /> {match.home_score} - {match.away_score} <TeamLink teamName={match.away_team} />
                 </div>
-              ))
-            )}
-          </div>
-        )}
+                <div className="match-info">
+                  {match.league} - MD{match.matchday} (S{match.season})
+                </div>
+              </Link>
+            ))
+          )}
+        </div>
       </div>
 
       {/* Fullscreen loading overlay */}
