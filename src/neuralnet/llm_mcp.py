@@ -501,6 +501,7 @@ The player's attribute profile suggests they are well-suited to their {player.po
         match_id = None
         home_score = 0
         away_score = 0
+        match_ended = False
         
         for event in match_events:
             if hasattr(event, 'match_id'):
@@ -508,8 +509,15 @@ The player's attribute profile suggests they are well-suited to their {player.po
             if hasattr(event, 'home_score') and hasattr(event, 'away_score'):
                 home_score = event.home_score
                 away_score = event.away_score
+            # Check if match has actually ended
+            if event.event_type == "MatchEnded":
+                match_ended = True
         
         if not match_id:
+            return []
+        
+        # CRITICAL: Only generate reports for matches that have actually ended
+        if not match_ended:
             return []
         
         match = world.get_match_by_id(match_id)

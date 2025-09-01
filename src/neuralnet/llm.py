@@ -323,7 +323,7 @@ The {player.position.value} has maintained good fitness levels and remains commi
         world: GameWorld,
         importance: str
     ) -> List[MediaStory]:
-        """Generate mock match reports for important matches."""
+        """Generate mock match reports for important matches that have been completed."""
         if importance == "normal":
             # Don't generate reports for normal matches
             return []
@@ -334,6 +334,7 @@ The {player.position.value} has maintained good fitness levels and remains commi
         away_score = 0
         home_team_id = None
         away_team_id = None
+        match_ended = False
         
         for event in match_events:
             if hasattr(event, 'match_id'):
@@ -341,8 +342,15 @@ The {player.position.value} has maintained good fitness levels and remains commi
             if hasattr(event, 'home_score') and hasattr(event, 'away_score'):
                 home_score = event.home_score
                 away_score = event.away_score
+            # Check if match has actually ended
+            if event.event_type == "MatchEnded":
+                match_ended = True
         
         if not match_id:
+            return []
+        
+        # CRITICAL: Only generate reports for matches that have actually ended
+        if not match_ended:
             return []
         
         # Find the match to get team information
