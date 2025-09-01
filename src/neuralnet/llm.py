@@ -459,7 +459,7 @@ The {player.position.value} has maintained good fitness levels and remains commi
             # Generate enhanced headlines based on match events
             headline = self._generate_enhanced_headline(
                 storylines, home_team, away_team, winner, loser, 
-                home_score, away_score, importance, winning_team_id
+                home_score, away_score, importance, winning_team_id, world
             )
             
             # Calculate sentiment based on outlet bias and result
@@ -501,24 +501,36 @@ The {player.position.value} has maintained good fitness levels and remains commi
         home_score: int, 
         away_score: int, 
         importance: str,
-        winning_team_id: Optional[str]
+        winning_team_id: Optional[str],
+        world
     ) -> str:
         """Generate enhanced headline using match event details."""
+        
+        # Check for rivalry information
+        rivalry = world.get_rivalry_between_teams(home_team.id, away_team.id) if world else None
         
         # Check for multiple goal scorers (braces, hat-tricks)
         if storylines["multiple_goals"]:
             top_scorer = max(storylines["multiple_goals"], key=lambda x: x["goals"])
             if top_scorer["goals"] >= 3:
+                if rivalry:
+                    return f"{top_scorer['player']}'s hat-trick powers {winner} to {rivalry.name} triumph"
                 return f"{top_scorer['player']}'s hat-trick powers {winner} to {home_score}-{away_score} {importance} triumph"
             elif top_scorer["goals"] == 2:
+                if rivalry:
+                    return f"{top_scorer['player']}'s brace decides {rivalry.name} in {winner}'s favor"
                 return f"{top_scorer['player']}'s brace leads {winner} to {home_score}-{away_score} {importance} victory"
         
         # Check for red card drama
         if storylines["red_cards"]:
             red_card_info = storylines["red_cards"][0]  # Focus on first red card
             if winner:
+                if rivalry:
+                    return f"{winner} capitalizes on red card to win {rivalry.name} derby"
                 return f"{winner} capitalizes on red card to defeat 10-man {loser} {home_score}-{away_score}"
             else:
+                if rivalry:
+                    return f"Ten-man drama mars {rivalry.name} as both sides share points"
                 return f"Ten-man drama as {home_team.name} and {away_team.name} share points in {home_score}-{away_score} draw"
         
         # Check for goal scorer mentions
@@ -527,7 +539,9 @@ The {player.position.value} has maintained good fitness levels and remains commi
             winning_goals = [g for g in storylines["goals"] if g["team"] == winning_team_id]
             if winning_goals:
                 scorer = winning_goals[0]["scorer"]
-                if importance == "derby":
+                if importance == "derby" and rivalry:
+                    return f"{scorer} strikes as {winner} claims {rivalry.name} bragging rights"
+                elif importance == "derby":
                     return f"{scorer} strikes as {winner} claims local bragging rights in derby triumph"
                 elif importance == "title_race":
                     return f"{scorer} nets crucial goal as {winner} takes step towards title"
@@ -543,10 +557,16 @@ The {player.position.value} has maintained good fitness levels and remains commi
             else:
                 return f"Title race tightens as {home_team.name} and {away_team.name} share points"
         elif importance == "derby":
-            if winner:
-                return f"{winner} claims local bragging rights in derby triumph"
+            if rivalry:
+                if winner:
+                    return f"{winner} claims {rivalry.name} bragging rights with {home_score}-{away_score} victory"
+                else:
+                    return f"Honors even in thrilling {rivalry.name} encounter"
             else:
-                return f"Honors even in hard-fought local derby"
+                if winner:
+                    return f"{winner} claims local bragging rights in derby triumph"
+                else:
+                    return f"Honors even in hard-fought local derby"
         elif importance == "relegation":
             if winner:
                 return f"{winner} strikes crucial blow in relegation battle"

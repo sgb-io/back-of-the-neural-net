@@ -252,6 +252,16 @@ class StaffMember(BaseModel):
     salary: int = Field(default=50000, ge=0, description="Annual salary")
 
 
+class Rivalry(BaseModel):
+    """A rivalry between two teams."""
+    id: str
+    team1_id: str
+    team2_id: str
+    name: str = Field(description="Official name of the rivalry (e.g., 'Merseyside Derby')")
+    intensity: int = Field(default=75, ge=1, le=100, description="Rivalry intensity level")
+    description: str = Field(default="", description="Brief description of the rivalry")
+
+
 class GameWorld(BaseModel):
     """The complete game world state."""
     season: int = Field(default=2025)
@@ -268,6 +278,7 @@ class GameWorld(BaseModel):
     media_outlets: Dict[str, MediaOutlet] = Field(default_factory=dict)
     player_agents: Dict[str, PlayerAgent] = Field(default_factory=dict)
     staff_members: Dict[str, StaffMember] = Field(default_factory=dict)
+    rivalries: Dict[str, Rivalry] = Field(default_factory=dict)
     
     # Simulation state
     paused: bool = Field(default=False)
@@ -332,6 +343,14 @@ class GameWorld(BaseModel):
             key=lambda t: (t.points, t.goal_difference, t.goals_for),
             reverse=True
         )
+    
+    def get_rivalry_between_teams(self, team1_id: str, team2_id: str) -> Optional['Rivalry']:
+        """Get rivalry between two teams if it exists."""
+        for rivalry in self.rivalries.values():
+            if ((rivalry.team1_id == team1_id and rivalry.team2_id == team2_id) or
+                (rivalry.team1_id == team2_id and rivalry.team2_id == team1_id)):
+                return rivalry
+        return None
     
     def advance_weekly_progression(self) -> None:
         """Advance weekly progression for all players (fitness, injuries, suspensions)."""
