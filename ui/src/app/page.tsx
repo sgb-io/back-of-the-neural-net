@@ -270,42 +270,53 @@ function HomeWithParams() {
                   {leagueNews.upcoming_matches.length > 0 && (
                     <div className="news-section">
                       <h4 className="news-section-title">⚽ Upcoming Matches</h4>
-                      {leagueNews.upcoming_matches.map((match: NewsMatch) => (
-                        <div key={match.id} className={`news-item news-match ${match.importance !== 'normal' ? 'important-match' : ''}`}>
-                          <div className="match-teams">
-                            <TeamLink teamName={match.home_team} /> vs <TeamLink teamName={match.away_team} />
-                            {match.importance !== 'normal' && (
-                              <span className={`importance-badge ${match.importance}`}>
-                                {match.importance === 'title_race' ? '👑' : 
-                                 match.importance === 'derby' ? '⚔️' : 
-                                 match.importance === 'relegation' ? '🔻' : '⭐'}
-                              </span>
+                      {leagueNews.upcoming_matches.map((match: NewsMatch) => {
+                        const isImportant = match.importance !== 'normal';
+                        return (
+                          <div key={match.id} className={`news-item news-match ${isImportant ? 'important-match' : 'normal-match'}`}>
+                            <div className="match-teams">
+                              <TeamLink teamName={match.home_team} /> vs <TeamLink teamName={match.away_team} />
+                              {isImportant && (
+                                <span className={`importance-badge ${match.importance}`}>
+                                  {match.importance === 'title_race' ? '👑' : 
+                                   match.importance === 'derby' ? '⚔️' : 
+                                   match.importance === 'relegation' ? '🔻' : '⭐'}
+                                </span>
+                              )}
+                            </div>
+                            {!isImportant ? (
+                              <div className="match-info-compact">
+                                Matchday {match.matchday}
+                              </div>
+                            ) : (
+                              <>
+                                <div className="match-info">
+                                  Matchday {match.matchday}
+                                </div>
+                                {match.media_preview && (
+                                  <div className="media-preview">
+                                    <div className="media-headline">{match.media_preview.headline}</div>
+                                    <div className="media-content">{match.media_preview.preview}</div>
+                                    <div className="media-source">— {match.media_preview.source}</div>
+                                  </div>
+                                )}
+                                {match.prediction && (
+                                  <div className="match-prediction">
+                                    <div className="prediction-score">
+                                      Predicted: {match.prediction.predicted_score.home_goals} - {match.prediction.predicted_score.away_goals}
+                                    </div>
+                                    <div className="prediction-probabilities">
+                                      <span className="prob-home">{match.home_team} {match.prediction.win_probabilities.home_win}%</span>
+                                      <span className="prob-draw">Draw {match.prediction.win_probabilities.draw}%</span>
+                                      <span className="prob-away">{match.away_team} {match.prediction.win_probabilities.away_win}%</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </>
                             )}
                           </div>
-                          <div className="match-info">
-                            Matchday {match.matchday}
-                          </div>
-                          {match.media_preview && (
-                            <div className="media-preview">
-                              <div className="media-headline">{match.media_preview.headline}</div>
-                              <div className="media-content">{match.media_preview.preview}</div>
-                              <div className="media-source">— {match.media_preview.source}</div>
-                            </div>
-                          )}
-                          {match.prediction && (
-                            <div className="match-prediction">
-                              <div className="prediction-score">
-                                Predicted: {match.prediction.predicted_score.home_goals} - {match.prediction.predicted_score.away_goals}
-                              </div>
-                              <div className="prediction-probabilities">
-                                <span className="prob-home">{match.home_team} {match.prediction.win_probabilities.home_win}%</span>
-                                <span className="prob-draw">Draw {match.prediction.win_probabilities.draw}%</span>
-                                <span className="prob-away">{match.away_team} {match.prediction.win_probabilities.away_win}%</span>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
