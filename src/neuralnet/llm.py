@@ -412,7 +412,9 @@ The {player.position.value} has maintained good fitness levels and remains commi
         if not match_id:
             return []
         
-        # CRITICAL: Only generate reports for matches that have actually ended
+        # CRITICAL SAFEGUARD FOR ISSUE #56: Only generate reports for matches that have actually ended
+        # This prevents fictitious match reports from being displayed when first launching the game
+        # Before any matches are simulated, match_ended will be False and no reports will be generated
         if not match_ended:
             return []
         
