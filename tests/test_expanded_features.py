@@ -3,7 +3,7 @@
 import pytest
 from src.neuralnet.data import create_sample_world, create_fantasy_team
 from src.neuralnet.entities import Position
-from src.neuralnet.simulation import MatchSimulator
+from src.neuralnet.simulation import MatchSimulator, MatchEngine
 from src.neuralnet.entities import Match
 import uuid
 
@@ -218,3 +218,175 @@ def test_unique_players_across_teams():
             overlap_ratio = overlap / total_unique if total_unique > 0 else 0
             
             assert overlap_ratio < 0.8, f"Teams {team1_id} and {team2_id} have too much player overlap ({overlap_ratio:.2%})"
+
+
+def test_weekly_progression_system():
+    """Test that weekly progression updates player fitness, injuries, and suspensions."""
+    world = create_sample_world()
+    
+    # Get a test player
+    team = next(iter(world.teams.values()))
+    player = team.players[0]
+    
+    # Set up initial state
+    initial_fitness = 50
+    initial_sharpness = 60
+    player.fitness = initial_fitness
+    player.sharpness = initial_sharpness
+    player.injured = False
+    
+    # Advance weekly progression
+    world.advance_weekly_progression()
+    
+    # Fitness and sharpness should have improved (for healthy players)
+    assert player.fitness > initial_fitness, f"Fitness should improve from {initial_fitness} to {player.fitness}"
+    assert player.sharpness > initial_sharpness, f"Sharpness should improve from {initial_sharpness} to {player.sharpness}"
+
+
+def test_injury_recovery_system():
+    """Test that injured players recover over time."""
+    world = create_sample_world()
+    
+    # Get a test player and injure them
+    team = next(iter(world.teams.values()))
+    player = team.players[0]
+    
+    player.injured = True
+    player.injury_weeks_remaining = 3
+    initial_fitness = player.fitness
+    initial_sharpness = player.sharpness
+    
+    # Advance one week
+    world.advance_weekly_progression()
+    
+    # Should still be injured but with less time remaining
+    assert player.injured
+    assert player.injury_weeks_remaining == 2
+    
+    # Fitness and sharpness should decrease while injured
+    assert player.fitness < initial_fitness, "Injured player should lose fitness"
+    assert player.sharpness < initial_sharpness, "Injured player should lose sharpness"
+    
+    # Advance until recovery
+    world.advance_weekly_progression()  # Week 2
+    world.advance_weekly_progression()  # Week 3, should recover
+    
+    # Should be recovered
+    assert not player.injured
+    assert player.injury_weeks_remaining == 0
+
+
+def test_suspension_countdown():
+    """Test that suspended players have their suspension reduced after matches."""
+    world = create_sample_world()
+    
+    # Get a test player and suspend them  
+    team = next(iter(world.teams.values()))
+    player = team.players[0]
+    
+    player.suspended = True
+    player.suspension_matches_remaining = 3
+    
+    # Simulate match progression (empty events list)
+    world.advance_match_progression([])
+    
+    # Suspension should count down
+    assert player.suspended
+    assert player.suspension_matches_remaining == 2
+    
+    # Advance two more matches
+    world.advance_match_progression([])
+    world.advance_match_progression([])
+    
+    # Should be un-suspended
+    assert not player.suspended
+    assert player.suspension_matches_remaining == 0
+
+
+def test_match_fitness_cost():
+    """Test that playing matches costs fitness and sharpness."""
+    world = create_sample_world()
+    
+    # Get first two teams for a match
+    team_ids = list(world.teams.keys())[:2]
+    home_team = world.teams[team_ids[0]]
+    away_team = world.teams[team_ids[1]]
+    
+    # Create match
+    match = Match(
+        id=str(uuid.uuid4()),
+        home_team_id=team_ids[0],
+        away_team_id=team_ids[1],
+        league="premier_fantasy",
+        matchday=1,
+        season=2024
+    )
+    
+    world.matches[match.id] = match
+    
+    # Set high fitness for test player
+    test_player = home_team.players[0]
+    initial_fitness = 90
+    initial_sharpness = 85
+    test_player.fitness = initial_fitness
+    test_player.sharpness = initial_sharpness
+    test_player.injured = False
+    
+    # Simulate match and get events
+    engine = MatchEngine(world)
+    events = engine.simulate_match(match.id, seed=42)
+    
+    # Check if test player was involved in any events
+    player_involved = any(
+        hasattr(event, 'player') and event.player == test_player.name or
+        hasattr(event, 'scorer') and event.scorer == test_player.name or  
+        hasattr(event, 'player_off') and event.player_off == test_player.name or
+        hasattr(event, 'player_on') and event.player_on == test_player.name
+        for event in events
+    )
+    
+    if player_involved:
+        # Player participated, should have reduced fitness/sharpness
+        assert test_player.fitness < initial_fitness, f"Participating player should lose fitness: {initial_fitness} -> {test_player.fitness}"
+        assert test_player.sharpness < initial_sharpness, f"Participating player should lose sharpness: {initial_sharpness} -> {test_player.sharpness}"
+
+
+def test_form_updates_after_match():
+    """Test that player form updates based on match performance."""
+    world = create_sample_world()
+    
+    # Get teams and create match
+    team_ids = list(world.teams.keys())[:2]
+    
+    match = Match(
+        id=str(uuid.uuid4()),
+        home_team_id=team_ids[0],
+        away_team_id=team_ids[1],
+        league="premier_fantasy",
+        matchday=1,
+        season=2024
+    )
+    
+    world.matches[match.id] = match
+    
+    # Record initial form for all players
+    initial_forms = {}
+    for team_id in team_ids:
+        team = world.teams[team_id]
+        for player in team.players:
+            initial_forms[player.name] = player.form
+    
+    # Simulate match
+    engine = MatchEngine(world)
+    events = engine.simulate_match(match.id, seed=42)
+    
+    # Check that some players had form changes
+    form_changes = 0
+    for team_id in team_ids:
+        team = world.teams[team_id]
+        for player in team.players:
+            if player.form != initial_forms[player.name]:
+                form_changes += 1
+    
+    # Some players should have had form changes (win/loss affects all players)
+    assert form_changes > 0, "Some players should have form changes after match"

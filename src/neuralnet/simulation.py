@@ -354,6 +354,9 @@ class MatchEngine:
         
         # Update player form based on match performance
         self._update_player_form_after_match(events, match)
+        
+        # Update match-based progression (fitness costs, suspension countdown)
+        self.world.advance_match_progression(events)
 
         return events
 

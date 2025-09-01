@@ -332,3 +332,79 @@ class GameWorld(BaseModel):
             key=lambda t: (t.points, t.goal_difference, t.goals_for),
             reverse=True
         )
+    
+    def advance_weekly_progression(self) -> None:
+        """Advance weekly progression for all players (fitness, injuries, suspensions)."""
+        import random
+        rng = random.Random(42)  # Use consistent seed for weekly progression
+        
+        for player in self.players.values():
+            # Handle injury recovery
+            if player.injured and player.injury_weeks_remaining > 0:
+                player.injury_weeks_remaining -= 1
+                if player.injury_weeks_remaining <= 0:
+                    player.injured = False
+                    player.injury_weeks_remaining = 0
+            
+            # Handle suspension countdown (per match, not weekly, but we can track here)
+            # Note: Suspension countdown should happen per match, but we can reset here for testing
+            
+            # Fitness changes - natural recovery and training
+            if not player.injured:
+                # Training improves fitness gradually  
+                fitness_change = rng.randint(1, 3)  # +1 to +3 fitness per week
+                player.fitness = min(100, player.fitness + fitness_change)
+                
+                # Sharpness also improves with training
+                sharpness_change = rng.randint(1, 2)  # +1 to +2 sharpness per week  
+                player.sharpness = min(100, player.sharpness + sharpness_change)
+            else:
+                # Injured players lose fitness and sharpness
+                fitness_loss = rng.randint(2, 4)  # -2 to -4 fitness per week when injured
+                sharpness_loss = rng.randint(1, 3)  # -1 to -3 sharpness per week when injured
+                
+                player.fitness = max(1, player.fitness - fitness_loss)
+                player.sharpness = max(1, player.sharpness - sharpness_loss)
+    
+    def advance_match_progression(self, match_events: list) -> None:
+        """Advance match-based progression (suspensions, match fitness cost)."""
+        import random
+        rng = random.Random(42)
+        
+        # Get all players who participated in matches (had events)
+        participating_players = set()
+        
+        for event in match_events:
+            if hasattr(event, 'player'):
+                participating_players.add(event.player)
+            elif hasattr(event, 'scorer'):
+                participating_players.add(event.scorer)
+            elif hasattr(event, 'player_off'):
+                participating_players.add(event.player_off)
+            elif hasattr(event, 'player_on'):
+                participating_players.add(event.player_on)
+        
+        # Apply match costs to participating players
+        for player_name in participating_players:
+            # Find the player object
+            player = None
+            for p in self.players.values():
+                if p.name == player_name:
+                    player = p
+                    break
+            
+            if player and not player.injured:
+                # Playing a match costs fitness and sharpness
+                fitness_cost = rng.randint(3, 7)  # -3 to -7 fitness per match
+                sharpness_cost = rng.randint(2, 5)  # -2 to -5 sharpness per match
+                
+                player.fitness = max(1, player.fitness - fitness_cost)
+                player.sharpness = max(1, player.sharpness - sharpness_cost)
+        
+        # Handle suspension countdown for all players
+        for player in self.players.values():
+            if player.suspended and player.suspension_matches_remaining > 0:
+                player.suspension_matches_remaining -= 1
+                if player.suspension_matches_remaining <= 0:
+                    player.suspended = False
+                    player.suspension_matches_remaining = 0
