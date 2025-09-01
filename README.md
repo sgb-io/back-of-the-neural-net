@@ -117,6 +117,33 @@ python main.py test
 LLM_PROVIDER=lmstudio LMSTUDIO_MODEL=llama-2-7b-chat python main.py server
 ```
 
+### Database Reset (Fresh Start)
+
+The game uses a persistent SQLite database (`game.db`) to store all events and game state. For testing or to start fresh:
+
+```bash
+# Start server with clean database
+python main.py server --reset
+
+# Or via environment variable
+RESET_DB=true python main.py server
+
+# Also works with other commands
+python main.py test --reset
+python main.py simulate --reset
+
+# Custom database location
+DB_PATH=/path/to/my/game.db python main.py server
+```
+
+**When to use `--reset`:**
+- First time setup
+- Testing or development
+- When you see old data from previous runs
+- To start a completely fresh season
+
+**Note:** Resetting deletes all match history, reports, and progress. Use with caution in production saves.
+
 ## Features
 
 - **Two Fantasy Leagues**: Premier Fantasy League and La Fantasia League
