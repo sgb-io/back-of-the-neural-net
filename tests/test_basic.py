@@ -25,7 +25,7 @@ def test_sample_world_creation():
     assert "la_fantasy" in world.leagues
     
     # Check teams
-    assert len(world.teams) == 20  # 10 teams per league
+    assert len(world.teams) == 40  # 20 teams per league
     
     # Check players
     assert len(world.players) > 0
