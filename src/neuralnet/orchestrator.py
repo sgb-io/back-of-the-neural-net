@@ -486,6 +486,19 @@ class GameOrchestrator:
             if home_position is None or away_position is None:
                 return "normal"
             
+            # Check for defined rivalries first (highest priority for derbies)
+            rivalry = self.world.get_rivalry_between_teams(home_team.id, away_team.id)
+            if rivalry:
+                # High-intensity rivalries (90+) override other importance levels
+                if rivalry.intensity >= 90:
+                    return "derby"
+                # Medium-intensity rivalries (70+) are still derbies unless it's a title race
+                elif rivalry.intensity >= 70:
+                    # Only override with title race if both teams are in top 3
+                    if home_position <= 3 and away_position <= 3:
+                        return "title_race"
+                    return "derby"
+            
             # Top of table clash (both teams in top 3)
             if home_position <= 3 and away_position <= 3:
                 return "title_race"
@@ -494,13 +507,23 @@ class GameOrchestrator:
             if (home_position <= 3 and away_position <= 6) or (away_position <= 3 and home_position <= 6):
                 return "high"
             
-            # Check for derby matches (same city/region - simple check based on name similarity)
-            home_words = set(home_team.name.lower().split())
-            away_words = set(away_team.name.lower().split())
-            
-            # Common words that might indicate same region
-            if home_words & away_words:  # If they share any words
-                return "derby"
+            # Fallback: Check for derby matches using name similarity (legacy system)
+            if not rivalry:  # Only if no defined rivalry exists
+                home_words = set(home_team.name.lower().split())
+                away_words = set(away_team.name.lower().split())
+                
+                # Exclude generic terms that don't indicate geographic proximity
+                generic_terms = {"united", "city", "fc", "red", "blue", "white", "green", "yellow", 
+                               "black", "claret", "orange", "lions", "eagles", "wolves", "bees", 
+                               "hammers", "spurs", "villa", "forest", "palace", "athletic", "town"}
+                
+                # Only consider significant geographic words, not generic color/nickname terms
+                meaningful_home_words = home_words - generic_terms
+                meaningful_away_words = away_words - generic_terms
+                
+                # Only classify as derby if they share meaningful geographic terms
+                if meaningful_home_words & meaningful_away_words:
+                    return "derby"
             
             # Both teams in bottom 4 (relegation battle)
             total_teams = len(league_table)
