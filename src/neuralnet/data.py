@@ -28,18 +28,28 @@ def create_sample_world() -> GameWorld:
     world.leagues["premier_fantasy"] = premier_fantasy
     world.leagues["la_fantasy"] = la_fantasy
     
-    # Create Premier Fantasy teams
+    # Create Premier Fantasy teams (parody of current Premier League teams)
     premier_teams = [
-        ("united_dragons", "United Dragons"),
-        ("city_phoenix", "City Phoenix"),
-        ("rovers_wolves", "Rovers Wolves"),
-        ("athletic_eagles", "Athletic Eagles"),
-        ("town_tigers", "Town Tigers"),
-        ("villa_lions", "Villa Lions"),
-        ("wanderers_hawks", "Wanderers Hawks"),
-        ("county_bears", "County Bears"),
-        ("forest_foxes", "Forest Foxes"),
-        ("united_sharks", "United Sharks"),
+        ("man_red", "Man Red"),  # Manchester United
+        ("man_blue", "Man Blue"),  # Manchester City  
+        ("merseyside_red", "Merseyside Red"),  # Liverpool
+        ("north_london", "North London"),  # Arsenal
+        ("west_london_blue", "West London Blue"),  # Chelsea
+        ("newcastle_black", "Newcastle Black"),  # Newcastle United
+        ("spurs_white", "Spurs White"),  # Tottenham
+        ("villa_claret", "Villa Claret"),  # Aston Villa
+        ("london_hammers", "London Hammers"),  # West Ham
+        ("seagulls_brighton", "Seagulls Brighton"),  # Brighton
+        ("midlands_wolves", "Midlands Wolves"),  # Wolves
+        ("palace_eagles", "Palace Eagles"),  # Crystal Palace
+        ("toffees_blue", "Toffees Blue"),  # Everton
+        ("brentford_bees", "Brentford Bees"),  # Brentford
+        ("fulham_white", "Fulham White"),  # Fulham
+        ("forest_red", "Forest Red"),  # Nottingham Forest
+        ("bournemouth_red", "Bournemouth Red"),  # AFC Bournemouth
+        ("luton_orange", "Luton Orange"),  # Luton Town
+        ("burnley_claret", "Burnley Claret"),  # Burnley
+        ("sheffield_red", "Sheffield Red"),  # Sheffield United
     ]
     
     for team_id, team_name in premier_teams:
@@ -51,18 +61,28 @@ def create_sample_world() -> GameWorld:
         for player in team.players:
             world.players[player.id] = player
     
-    # Create La Fantasia teams
+    # Create La Fantasia teams (parody of current La Liga teams)
     la_teams = [
-        ("real_dragons", "Real Dragones"),
-        ("barcelona_suns", "Barcelona Soles"),
-        ("atletico_storms", "Atlético Tormentas"),
-        ("valencia_flames", "Valencia Llamas"),
-        ("sevilla_winds", "Sevilla Vientos"),
-        ("villarreal_waves", "Villarreal Ondas"),
-        ("real_eagles", "Real Águilas"),
-        ("betis_stars", "Betis Estrellas"),
-        ("athletic_thunder", "Athletic Truenos"),
-        ("celta_comets", "Celta Cometas"),
+        ("madrid_white", "Madrid White"),  # Real Madrid
+        ("barcelona_blue", "Barcelona Blue"),  # FC Barcelona
+        ("atletico_red", "Atlético Red"),  # Atlético Madrid
+        ("sevilla_white", "Sevilla White"),  # Sevilla FC
+        ("valencia_bat", "Valencia Bat"),  # Valencia CF
+        ("bilbao_lions", "Bilbao Lions"),  # Athletic Bilbao
+        ("sociedad_blue", "Sociedad Blue"),  # Real Sociedad
+        ("betis_green", "Betis Green"),  # Real Betis
+        ("villarreal_yellow", "Villarreal Yellow"),  # Villarreal CF
+        ("celta_sky", "Celta Sky"),  # Celta de Vigo
+        ("osasuna_red", "Osasuna Red"),  # CA Osasuna
+        ("rayo_lightning", "Rayo Lightning"),  # Rayo Vallecano
+        ("getafe_blue", "Getafe Blue"),  # Getafe CF
+        ("mallorca_red", "Mallorca Red"),  # RCD Mallorca
+        ("cadiz_yellow", "Cádiz Yellow"),  # Cádiz CF
+        ("alaves_blue", "Alavés Blue"),  # Deportivo Alavés
+        ("girona_red", "Girona Red"),  # Girona FC
+        ("las_palmas_yellow", "Las Palmas Yellow"),  # UD Las Palmas
+        ("leganes_blue", "Leganés Blue"),  # CD Leganés
+        ("espanyol_blue", "Espanyol Blue"),  # RCD Espanyol
     ]
     
     for team_id, team_name in la_teams:
