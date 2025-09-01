@@ -92,6 +92,15 @@ class Substitution(MatchEvent):
     player_on: str
 
 
+class Injury(MatchEvent):
+    """Player injury event."""
+    player: str
+    team: str
+    injury_type: str
+    severity: str  # "minor", "moderate", "severe"
+    weeks_out: int
+
+
 class MatchEnded(Event):
     """Event fired when a match concludes."""
     match_id: str
@@ -300,6 +309,7 @@ class EventStore:
             "YellowCard": YellowCard,
             "RedCard": RedCard,
             "Substitution": Substitution,
+            "Injury": Injury,
             "MatchEnded": MatchEnded,
             "SoftStateUpdated": SoftStateUpdated,
             "MediaStoryPublished": MediaStoryPublished,

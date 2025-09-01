@@ -37,25 +37,77 @@ class Player(BaseModel):
     form: int = Field(default=50, ge=1, le=100)  # Current form
     morale: int = Field(default=50, ge=1, le=100)  # Player morale
     fitness: int = Field(default=100, ge=1, le=100)  # Physical fitness
+    sharpness: int = Field(default=75, ge=1, le=100)  # Match sharpness/readiness
     
     # Metadata
-    age: int = Field(ge=16, le=45)
+    age: int = Field(ge=15, le=45)  # Extended range for youth development
+    peak_age: int = Field(default=27, ge=20, le=35)  # Age when player peaks
     injured: bool = Field(default=False)
+    injury_weeks_remaining: int = Field(default=0, ge=0)  # Weeks until recovery
+    suspended: bool = Field(default=False)
+    suspension_matches_remaining: int = Field(default=0, ge=0)  # Matches until suspension ends
     yellow_cards: int = Field(default=0, ge=0)
     red_cards: int = Field(default=0, ge=0)
     
     @property
+    def base_attributes(self) -> Dict[str, int]:
+        """Get base attributes before age modifiers."""
+        return {
+            "pace": self.pace,
+            "shooting": self.shooting, 
+            "passing": self.passing,
+            "defending": self.defending,
+            "physicality": self.physicality
+        }
+    
+    @property
+    def age_modified_attributes(self) -> Dict[str, int]:
+        """Get attributes modified by age curve."""
+        base_attrs = self.base_attributes
+        age_modifier = self._calculate_age_modifier()
+        
+        modified = {}
+        for attr, value in base_attrs.items():
+            # Apply age modifier (can be positive or negative)
+            modified_value = value + (value * age_modifier * 0.01)  # Age modifier as percentage
+            modified[attr] = max(1, min(100, int(modified_value)))
+        
+        return modified
+    
+    def _calculate_age_modifier(self) -> float:
+        """Calculate age modifier (-20 to +15) based on player's age curve."""
+        age_diff = self.age - self.peak_age
+        
+        if age_diff <= 0:
+            # Before peak: gradual improvement (0 to +15%)
+            years_to_peak = self.peak_age - 15  # Career start at 15
+            if years_to_peak <= 0:
+                return 15.0  # Edge case
+            progress = (self.age - 15) / years_to_peak
+            return progress * 15.0  # Up to +15% at peak
+        else:
+            # After peak: gradual decline (0 to -20%)
+            years_after_peak = age_diff
+            decline_rate = min(years_after_peak * 2.5, 20.0)  # 2.5% per year, max -20%
+            return -decline_rate
+    
+    @property
     def overall_rating(self) -> int:
         """Calculate overall player rating from attributes."""
-        # Simple average of all skill attributes
-        skills = [self.pace, self.shooting, self.passing, self.defending, self.physicality]
+        # Use age-modified attributes
+        attrs = self.age_modified_attributes
+        skills = [attrs["pace"], attrs["shooting"], attrs["passing"], attrs["defending"], attrs["physicality"]]
         base_rating = sum(skills) / len(skills)
         
-        # Factor in form and fitness
+        # Factor in form, fitness, and sharpness
         form_modifier = (self.form - 50) * 0.1  # -5 to +5 modifier
         fitness_modifier = (self.fitness - 100) * 0.05  # Penalty for low fitness
+        sharpness_modifier = (self.sharpness - 75) * 0.05  # Penalty for low sharpness
         
-        overall = base_rating + form_modifier + fitness_modifier
+        # Injury penalty
+        injury_modifier = -10 if self.injured else 0
+        
+        overall = base_rating + form_modifier + fitness_modifier + sharpness_modifier + injury_modifier
         return max(1, min(100, int(overall)))
 
 
