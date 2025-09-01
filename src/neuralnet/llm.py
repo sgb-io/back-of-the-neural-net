@@ -10,6 +10,69 @@ from .entities import GameWorld, Player, Team, ClubOwner, MediaOutlet, PlayerAge
 from .events import Event, MatchEvent
 
 
+def analyze_match_events_for_story(match_events: List[MatchEvent], world: GameWorld) -> Dict[str, Any]:
+    """Analyze match events to extract key storylines for media reports."""
+    storylines = {
+        "goals": [],
+        "cards": [],
+        "substitutions": [],
+        "scorers": {},  # player_name: goal_count
+        "assisters": {},  # player_name: assist_count
+        "red_cards": [],
+        "multiple_goals": [],  # players with 2+ goals
+        "key_events": []
+    }
+    
+    for event in match_events:
+        if event.event_type == "Goal":
+            # Track goal scorer
+            if event.scorer in storylines["scorers"]:
+                storylines["scorers"][event.scorer] += 1
+            else:
+                storylines["scorers"][event.scorer] = 1
+            
+            # Track assister
+            if hasattr(event, 'assist') and event.assist:
+                if event.assist in storylines["assisters"]:
+                    storylines["assisters"][event.assist] += 1
+                else:
+                    storylines["assisters"][event.assist] = 1
+            
+            storylines["goals"].append({
+                "scorer": event.scorer,
+                "team": event.team,
+                "minute": event.minute,
+                "assist": getattr(event, 'assist', None)
+            })
+            
+        elif event.event_type == "RedCard":
+            storylines["red_cards"].append({
+                "player": event.player,
+                "team": event.team,
+                "minute": event.minute,
+                "reason": event.reason
+            })
+            storylines["cards"].append(event)
+            
+        elif event.event_type == "YellowCard":
+            storylines["cards"].append(event)
+            
+        elif event.event_type == "Substitution":
+            storylines["substitutions"].append({
+                "team": event.team,
+                "player_off": event.player_off,
+                "player_on": event.player_on,
+                "minute": event.minute
+            })
+    
+    # Identify players with multiple goals
+    for player, goals in storylines["scorers"].items():
+        if goals >= 2:
+            storylines["multiple_goals"].append({"player": player, "goals": goals})
+    
+    return storylines
+
+
 class SoftStateUpdate(BaseModel):
     """Represents an update to soft state from LLM analysis."""
     entity_type: str  # "player", "team", "club_owner", "media_outlet", "player_agent", "staff_member"
@@ -364,6 +427,9 @@ The {player.position.value} has maintained good fitness levels and remains commi
         if not home_team or not away_team:
             return []
         
+        # Analyze match events to extract interesting storylines
+        storylines = analyze_match_events_for_story(match_events, world)
+        
         # Generate reports from a subset of media outlets
         stories = []
         outlets = list(world.media_outlets.values())
@@ -373,41 +439,28 @@ The {player.position.value} has maintained good fitness levels and remains commi
         selected_outlets = outlets[:num_outlets]
         
         for outlet in selected_outlets:
-            # Generate headline based on match result and importance
+            # Determine match result
             if home_score > away_score:
                 winner = home_team.name
                 loser = away_team.name
+                winning_team_id = home_team.id
                 result_desc = f"{home_score}-{away_score} victory"
             elif away_score > home_score:
                 winner = away_team.name
                 loser = home_team.name
+                winning_team_id = away_team.id
                 result_desc = f"{away_score}-{home_score} victory"
             else:
                 result_desc = f"{home_score}-{away_score} draw"
                 winner = None
                 loser = None
+                winning_team_id = None
             
-            # Create importance-specific headlines
-            if importance == "title_race":
-                if winner:
-                    headline = f"{winner} takes crucial step in title race with {result_desc} over {loser}"
-                else:
-                    headline = f"Title race tightens as {home_team.name} and {away_team.name} share points"
-            elif importance == "derby":
-                if winner:
-                    headline = f"{winner} claims local bragging rights in derby triumph"
-                else:
-                    headline = f"Honors even in hard-fought local derby"
-            elif importance == "relegation":
-                if winner:
-                    headline = f"{winner} strikes crucial blow in relegation battle"
-                else:
-                    headline = f"Vital points shared in relegation six-pointer"
-            else:  # high importance
-                if winner:
-                    headline = f"{winner} secures important {result_desc} in high-stakes encounter"
-                else:
-                    headline = f"High-stakes clash ends in stalemate"
+            # Generate enhanced headlines based on match events
+            headline = self._generate_enhanced_headline(
+                storylines, home_team, away_team, winner, loser, 
+                home_score, away_score, importance, winning_team_id
+            )
             
             # Calculate sentiment based on outlet bias and result
             sentiment = 0
@@ -437,6 +490,73 @@ The {player.position.value} has maintained good fitness levels and remains commi
             stories.append(story)
         
         return stories
+    
+    def _generate_enhanced_headline(
+        self, 
+        storylines: Dict[str, Any], 
+        home_team, 
+        away_team, 
+        winner: Optional[str], 
+        loser: Optional[str], 
+        home_score: int, 
+        away_score: int, 
+        importance: str,
+        winning_team_id: Optional[str]
+    ) -> str:
+        """Generate enhanced headline using match event details."""
+        
+        # Check for multiple goal scorers (braces, hat-tricks)
+        if storylines["multiple_goals"]:
+            top_scorer = max(storylines["multiple_goals"], key=lambda x: x["goals"])
+            if top_scorer["goals"] >= 3:
+                return f"{top_scorer['player']}'s hat-trick powers {winner} to {home_score}-{away_score} {importance} triumph"
+            elif top_scorer["goals"] == 2:
+                return f"{top_scorer['player']}'s brace leads {winner} to {home_score}-{away_score} {importance} victory"
+        
+        # Check for red card drama
+        if storylines["red_cards"]:
+            red_card_info = storylines["red_cards"][0]  # Focus on first red card
+            if winner:
+                return f"{winner} capitalizes on red card to defeat 10-man {loser} {home_score}-{away_score}"
+            else:
+                return f"Ten-man drama as {home_team.name} and {away_team.name} share points in {home_score}-{away_score} draw"
+        
+        # Check for goal scorer mentions
+        if storylines["goals"] and winner:
+            # Find a goal scorer from the winning team
+            winning_goals = [g for g in storylines["goals"] if g["team"] == winning_team_id]
+            if winning_goals:
+                scorer = winning_goals[0]["scorer"]
+                if importance == "derby":
+                    return f"{scorer} strikes as {winner} claims local bragging rights in derby triumph"
+                elif importance == "title_race":
+                    return f"{scorer} nets crucial goal as {winner} takes step towards title"
+                elif importance == "relegation":
+                    return f"{scorer}'s strike gives {winner} vital win in relegation battle"
+                else:
+                    return f"{scorer} stars in {winner}'s {home_score}-{away_score} victory over {loser}"
+        
+        # Fallback to importance-based headlines (original logic)
+        if importance == "title_race":
+            if winner:
+                return f"{winner} takes crucial step in title race with {home_score}-{away_score} victory over {loser}"
+            else:
+                return f"Title race tightens as {home_team.name} and {away_team.name} share points"
+        elif importance == "derby":
+            if winner:
+                return f"{winner} claims local bragging rights in derby triumph"
+            else:
+                return f"Honors even in hard-fought local derby"
+        elif importance == "relegation":
+            if winner:
+                return f"{winner} strikes crucial blow in relegation battle"
+            else:
+                return f"Vital points shared in relegation six-pointer"
+        else:  # high importance
+            if winner:
+                return f"{winner} secures important {home_score}-{away_score} victory in high-stakes encounter"
+            else:
+                return f"High-stakes clash ends in stalemate"
 
 
 class SoftStateValidator:
