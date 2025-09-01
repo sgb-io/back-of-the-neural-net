@@ -21,7 +21,19 @@ class GameOrchestrator:
     
     def __init__(self, event_store: Optional[EventStore] = None, config: Optional[Config] = None) -> None:
         self.config = config or get_config()
-        self.event_store = event_store or EventStore()
+        
+        # Create event store with configured path, or use provided one
+        if event_store is not None:
+            self.event_store = event_store
+        else:
+            self.event_store = EventStore(self.config.db_path)
+            
+        # Reset database if requested
+        if self.config.reset_db and event_store is None:
+            print("🗑️  Resetting database for fresh start...")
+            self.event_store.reset_database()
+            print("✓ Database reset complete")
+        
         self.world = GameWorld()
         self.match_engine = MatchEngine(self.world)
         

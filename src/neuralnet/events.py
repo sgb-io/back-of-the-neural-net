@@ -160,6 +160,25 @@ class EventStore:
             self._connection = None
             self._init_db()
     
+    def reset_database(self) -> None:
+        """Reset the database by dropping all tables and recreating them.
+        
+        This is useful for starting with a fresh game state.
+        """
+        if self.db_path == ":memory:":
+            # For in-memory databases, just recreate the connection
+            if self._connection:
+                self._connection.close()
+            self._connection = sqlite3.connect(":memory:")
+            self._init_db_with_connection(self._connection)
+        else:
+            # For file databases, drop and recreate tables
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("DROP TABLE IF EXISTS events")
+                cursor.execute("DROP TABLE IF EXISTS snapshots")
+                self._init_db_with_connection(conn)
+    
     def _init_db(self) -> None:
         """Initialize the SQLite database schema for file-based databases."""
         with sqlite3.connect(self.db_path) as conn:
