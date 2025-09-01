@@ -33,8 +33,35 @@ def calculate_player_season_stats(player_name: str) -> dict:
             "minutes_played": 0
         }
     
+    # First, find the player's current team
+    player_team_id = None
+    for team_id, team in orchestrator.world.teams.items():
+        if any(p.name == player_name for p in team.players):
+            player_team_id = team_id
+            break
+    
+    if not player_team_id:
+        # Player not found in any team
+        return {
+            "goals": 0,
+            "assists": 0,
+            "yellow_cards": 0,
+            "red_cards": 0,
+            "matches_played": 0,
+            "minutes_played": 0
+        }
+    
     # Get all events from the event store
     all_events = orchestrator.event_store.get_events()
+    
+    # First, identify which matches have been fully simulated (have MatchEnded events)
+    # and involve the player's team
+    completed_player_matches = set()
+    for event in all_events:
+        if isinstance(event, MatchEnded):
+            match = orchestrator.world.get_match_by_id(event.match_id)
+            if match and (match.home_team_id == player_team_id or match.away_team_id == player_team_id):
+                completed_player_matches.add(event.match_id)
     
     # Track player statistics
     stats = {
@@ -42,14 +69,16 @@ def calculate_player_season_stats(player_name: str) -> dict:
         "assists": 0,
         "yellow_cards": 0,
         "red_cards": 0,
-        "matches_played": 0,
+        "matches_played": len(completed_player_matches),
         "minutes_played": 0
     }
     
-    # Track matches the player has participated in to avoid counting duplicates
-    matches_played_in = set()
-    
     for event in all_events:
+        # Only count statistics from completed matches involving the player's team
+        event_match_id = getattr(event, 'match_id', None)
+        if event_match_id and event_match_id not in completed_player_matches:
+            continue
+        
         # Count goals scored by this player
         if isinstance(event, Goal) and event.scorer == player_name:
             stats["goals"] += 1
@@ -66,32 +95,9 @@ def calculate_player_season_stats(player_name: str) -> dict:
         elif isinstance(event, RedCard) and event.player == player_name:
             stats["red_cards"] += 1
         
-        # Track matches played - use MatchStarted events to identify when a player participated
-        elif isinstance(event, MatchStarted):
-            # For now, we'll assume all players in the squad played
-            # This is a simplification - in a real system, you'd track substitutions
-            # to determine who actually played
-            match_id = event.match_id
-            
-            # Get the match details to see if this player's team was involved
-            match = orchestrator.world.get_match_by_id(match_id)
-            if match:
-                home_team = orchestrator.world.get_team_by_id(match.home_team_id)
-                away_team = orchestrator.world.get_team_by_id(match.away_team_id)
-                
-                # Check if player is in either team
-                player_in_match = False
-                if home_team and any(p.name == player_name for p in home_team.players):
-                    player_in_match = True
-                elif away_team and any(p.name == player_name for p in away_team.players):
-                    player_in_match = True
-                
-                if player_in_match and match_id not in matches_played_in:
-                    matches_played_in.add(match_id)
-                    stats["matches_played"] += 1
-                    # For now, assume full 90 minutes played per match
-                    # In a real system, you'd track substitutions and actual minutes
-                    stats["minutes_played"] += 90
+        # Add match duration for completed matches
+        elif isinstance(event, MatchEnded) and event.match_id in completed_player_matches:
+            stats["minutes_played"] += event.duration_minutes
     
     return stats
 
