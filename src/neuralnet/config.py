@@ -44,6 +44,10 @@ class Config(BaseModel):
     
     # Game settings
     use_tools: bool = Field(default=True, description="Enable game state tools for LLM")
+    
+    # Database settings
+    db_path: str = Field(default="game.db", description="Database file path")
+    reset_db: bool = Field(default=False, description="Reset database on startup")
 
 
 def load_config() -> Config:
@@ -82,6 +86,10 @@ def load_config() -> Config:
     
     # Load game settings
     config.use_tools = os.getenv("USE_TOOLS", "true").lower() in ("true", "1", "yes")
+    
+    # Load database settings
+    config.db_path = os.getenv("DB_PATH", "game.db")
+    config.reset_db = os.getenv("RESET_DB", "false").lower() in ("true", "1", "yes")
     
     return config
 

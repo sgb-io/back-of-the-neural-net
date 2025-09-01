@@ -2,6 +2,7 @@
 """Command-line interface for Back of the Neural Net."""
 
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -17,6 +18,13 @@ async def main() -> None:
     """Main CLI entry point."""
     if len(sys.argv) > 1:
         command = sys.argv[1]
+        
+        # Check for --reset flag in any position
+        reset_requested = "--reset" in sys.argv
+        if reset_requested:
+            os.environ["RESET_DB"] = "true"
+            print("🗑️  Database reset requested")
+        
         if command == "simulate":
             print("Running headless simulation...")
             orchestrator = GameOrchestrator()
@@ -43,6 +51,9 @@ async def main() -> None:
             # Test one simulation step
             result = await orchestrator.advance_simulation()
             print(f"Simulation step completed: {result['status']}")
+        elif command == "server":
+            # This is handled below in the main block, but we should recognize it here too
+            pass
         else:
             print(f"Unknown command: {command}")
             print_usage()
@@ -54,13 +65,21 @@ def print_usage() -> None:
     """Print usage information."""
     print("Back of the Neural Net CLI")
     print("\nUsage:")
-    print("  python main.py server    - Start the API server")
-    print("  python main.py simulate  - Run headless simulation")
-    print("  python main.py test      - Run basic test")
+    print("  python main.py server [--reset]    - Start the API server")
+    print("  python main.py simulate [--reset]  - Run headless simulation")
+    print("  python main.py test [--reset]      - Run basic test")
+    print("\nFlags:")
+    print("  --reset                            - Reset database for fresh start")
 
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "server":
+        # Check for --reset flag for server command
+        reset_requested = "--reset" in sys.argv
+        if reset_requested:
+            os.environ["RESET_DB"] = "true"
+            print("🗑️  Database reset requested for server startup")
+        
         print("Starting Back of the Neural Net server...")
         print("API will be available at http://127.0.0.1:8000")
         print("React UI should be started separately with: cd ui && npm start")
