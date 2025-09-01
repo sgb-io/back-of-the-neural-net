@@ -3,7 +3,7 @@
 import uuid
 from typing import Dict
 
-from .entities import GameWorld, League, Player, Position, Team, ClubOwner, MediaOutlet, PlayerAgent, StaffMember
+from .entities import GameWorld, League, Player, Position, Team, ClubOwner, MediaOutlet, PlayerAgent, StaffMember, Rivalry
 
 
 def create_sample_world() -> GameWorld:
@@ -99,6 +99,7 @@ def create_sample_world() -> GameWorld:
     _create_staff_members(world)
     _create_player_agents(world)
     _create_media_outlets(world)
+    _create_rivalries(world)
     
     return world
 
@@ -439,3 +440,128 @@ def _create_media_outlets(world: GameWorld) -> None:
             outlet.bias_towards_teams[team_id] = random.randint(-30, 30)
         
         world.media_outlets[outlet.id] = outlet
+
+
+def _create_rivalries(world: GameWorld) -> None:
+    """Create rivalries between teams."""
+    
+    # Premier Fantasy League rivalries
+    premier_rivalries = [
+        # Merseyside Derby - the main example from the issue
+        {
+            "team1_id": "merseyside_red",
+            "team2_id": "toffees_blue", 
+            "name": "Merseyside Derby",
+            "intensity": 95,
+            "description": "The historic Merseyside rivalry between the Red and Blue sides of Liverpool"
+        },
+        # Manchester Derby
+        {
+            "team1_id": "man_red",
+            "team2_id": "man_blue",
+            "name": "Manchester Derby", 
+            "intensity": 90,
+            "description": "The fierce Manchester rivalry between United and City"
+        },
+        # North London Derby
+        {
+            "team1_id": "north_london",
+            "team2_id": "spurs_white",
+            "name": "North London Derby",
+            "intensity": 88,
+            "description": "The North London rivalry between Arsenal and Tottenham"
+        },
+        # West London rivalries
+        {
+            "team1_id": "west_london_blue",
+            "team2_id": "fulham_white",
+            "name": "West London Derby",
+            "intensity": 70,
+            "description": "Local West London rivalry"
+        },
+        {
+            "team1_id": "west_london_blue", 
+            "team2_id": "brentford_bees",
+            "name": "West London Derby",
+            "intensity": 65,
+            "description": "West London rivalry between Chelsea and Brentford"
+        },
+        # London rivalries
+        {
+            "team1_id": "london_hammers",
+            "team2_id": "palace_eagles",
+            "name": "South London Derby",
+            "intensity": 75,
+            "description": "South-East London rivalry"
+        },
+        # Midlands rivalries
+        {
+            "team1_id": "villa_claret",
+            "team2_id": "midlands_wolves",
+            "name": "Midlands Derby", 
+            "intensity": 80,
+            "description": "Historic Midlands rivalry between Villa and Wolves"
+        },
+        # Claret rivalries
+        {
+            "team1_id": "villa_claret",
+            "team2_id": "burnley_claret",
+            "name": "Claret Derby",
+            "intensity": 60,
+            "description": "Battle of the Claret and Blue teams"
+        }
+    ]
+    
+    # La Fantasia League rivalries
+    la_rivalries = [
+        # El Clásico equivalent
+        {
+            "team1_id": "madrid_white",
+            "team2_id": "barcelona_blue", 
+            "name": "El Clásico Fantasia",
+            "intensity": 100,
+            "description": "The greatest rivalry in fantasy football between Madrid White and Barcelona Blue"
+        },
+        # Madrid Derby
+        {
+            "team1_id": "madrid_white",
+            "team2_id": "atletico_red",
+            "name": "Madrid Derby",
+            "intensity": 85,
+            "description": "The Madrid city rivalry"
+        },
+        # Seville Derby
+        {
+            "team1_id": "sevilla_white",
+            "team2_id": "betis_green",
+            "name": "Seville Derby",
+            "intensity": 90,
+            "description": "The passionate Seville city rivalry"
+        },
+        # Basque rivalries
+        {
+            "team1_id": "bilbao_lions",
+            "team2_id": "sociedad_blue",
+            "name": "Basque Derby",
+            "intensity": 85,
+            "description": "Basque regional rivalry"
+        }
+    ]
+    
+    # Create all rivalries
+    all_rivalries = premier_rivalries + la_rivalries
+    
+    for rivalry_data in all_rivalries:
+        # Check if both teams exist in the world
+        if (rivalry_data["team1_id"] in world.teams and 
+            rivalry_data["team2_id"] in world.teams):
+            
+            rivalry = Rivalry(
+                id=str(uuid.uuid4()),
+                team1_id=rivalry_data["team1_id"],
+                team2_id=rivalry_data["team2_id"],
+                name=rivalry_data["name"],
+                intensity=rivalry_data["intensity"],
+                description=rivalry_data["description"]
+            )
+            world.rivalries[rivalry.id] = rivalry

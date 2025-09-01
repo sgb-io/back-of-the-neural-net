@@ -233,7 +233,7 @@ async def get_news_feed(limit: int = 20) -> dict:
             if importance_level in ["high", "derby", "title_race"]:
                 try:
                     media_preview = await generate_match_media_preview(
-                        home_team, away_team, importance_level, orchestrator.game_tools
+                        home_team, away_team, importance_level, orchestrator.game_tools, orchestrator.world
                     )
                     fixture_data["media_preview"] = media_preview
                 except Exception as e:
@@ -404,7 +404,7 @@ async def get_fixtures_with_predictions(limit: int = 20) -> dict:
             if importance_level in ["high", "derby", "title_race"]:
                 try:
                     media_preview = await generate_match_media_preview(
-                        home_team, away_team, importance_level, orchestrator.game_tools
+                        home_team, away_team, importance_level, orchestrator.game_tools, orchestrator.world
                     )
                     fixture_data["media_preview"] = media_preview
                 except Exception as e:
@@ -440,6 +440,19 @@ def determine_match_importance(home_team, away_team, league: str, world) -> str:
         if home_position is None or away_position is None:
             return "normal"
         
+        # Check for defined rivalries first (highest priority for derbies)
+        rivalry = world.get_rivalry_between_teams(home_team.id, away_team.id)
+        if rivalry:
+            # High-intensity rivalries (90+) override other importance levels
+            if rivalry.intensity >= 90:
+                return "derby"
+            # Medium-intensity rivalries (70+) are still derbies unless it's a title race
+            elif rivalry.intensity >= 70:
+                # Only override with title race if both teams are in top 3
+                if home_position <= 3 and away_position <= 3:
+                    return "title_race"
+                return "derby"
+        
         # Top of table clash (both teams in top 3)
         if home_position <= 3 and away_position <= 3:
             return "title_race"
@@ -448,13 +461,14 @@ def determine_match_importance(home_team, away_team, league: str, world) -> str:
         if (home_position <= 3 and away_position <= 6) or (away_position <= 3 and home_position <= 6):
             return "high"
         
-        # Check for derby matches (same city/region - simple check based on name similarity)
-        home_words = set(home_team.name.lower().split())
-        away_words = set(away_team.name.lower().split())
-        
-        # Common words that might indicate same region
-        if home_words & away_words:  # If they share any words
-            return "derby"
+        # Fallback: Check for derby matches using name similarity (legacy system)
+        if not rivalry:  # Only if no defined rivalry exists
+            home_words = set(home_team.name.lower().split())
+            away_words = set(away_team.name.lower().split())
+            
+            # Common words that might indicate same region
+            if home_words & away_words:  # If they share any words
+                return "derby"
         
         # Both teams in bottom 4 (relegation battle)
         total_teams = len(league_table)
@@ -467,19 +481,28 @@ def determine_match_importance(home_team, away_team, league: str, world) -> str:
         return "normal"
 
 
-async def generate_match_media_preview(home_team, away_team, importance_level: str, game_tools) -> dict:
+async def generate_match_media_preview(home_team, away_team, importance_level: str, game_tools, world) -> dict:
     """Generate a media preview for an upcoming important match (NOT a match report)."""
     if not game_tools:
         return None
     
     try:
+        # Check if this is a defined rivalry match
+        rivalry = world.get_rivalry_between_teams(home_team.id, away_team.id) if world else None
+        
         # Generate PREVIEW based on importance level - these are for UPCOMING matches only
         if importance_level == "title_race":
             headline = f"Preview: Title Race Showdown - {home_team.name} vs {away_team.name}"
             preview = f"Two title contenders are set to clash as {home_team.name} prepare to host {away_team.name} in what could be a season-defining encounter."
         elif importance_level == "derby":
-            headline = f"Preview: Local Derby - {home_team.name} vs {away_team.name}"
-            preview = f"Pride will be at stake when local rivals {home_team.name} and {away_team.name} face off in this upcoming heated derby match."
+            if rivalry:
+                # Use the official rivalry name
+                headline = f"Preview: {rivalry.name} - {home_team.name} vs {away_team.name}"
+                preview = f"The historic {rivalry.name} returns as {home_team.name} and {away_team.name} prepare for another chapter in their legendary rivalry."
+            else:
+                # Fallback for generic derby
+                headline = f"Preview: Local Derby - {home_team.name} vs {away_team.name}"
+                preview = f"Pride will be at stake when local rivals {home_team.name} and {away_team.name} face off in this upcoming heated derby match."
         elif importance_level == "relegation":
             headline = f"Preview: Relegation Battle - {home_team.name} vs {away_team.name}"
             preview = f"Six-pointer alert! Both {home_team.name} and {away_team.name} desperately need points in this crucial upcoming relegation clash."
@@ -504,11 +527,10 @@ async def generate_match_media_preview(home_team, away_team, importance_level: s
             "preview": preview,
             "source": source,
             "importance": importance_level,
-            "type": "match_preview"  # Explicitly mark this as a preview
+            "type": "match_preview",  # Explicitly mark this as a preview
+            "rivalry_name": rivalry.name if rivalry else None,
+            "rivalry_intensity": rivalry.intensity if rivalry else None
         }
-    
-    except Exception as e:
-        print(f"Error generating media preview: {e}")
     
     except Exception as e:
         print(f"Error generating media preview: {e}")
