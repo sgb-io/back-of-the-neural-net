@@ -6,7 +6,8 @@ import { WorldState, MatchEvent, GoalEvent, CardEvent, SubstitutionEvent, MatchE
 import TeamLink from '@/components/TeamLink';
 import PlayerLink from '@/components/PlayerLink';
 
-export default function Home() {
+// Component to handle search params safely
+function HomeWithParams() {
   const [worldState, setWorldState] = useState<WorldState | null>(null);
   const [isAdvancing, setIsAdvancing] = useState<boolean>(false);
   const [selectedLeague, setSelectedLeague] = useState<string>('');
@@ -22,6 +23,17 @@ export default function Home() {
   // New state for news feed
   const [newsData, setNewsData] = useState<NewsResponse | null>(null);
   const [isLoadingNews, setIsLoadingNews] = useState<boolean>(false);
+
+  // Handle URL match parameter on client side
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const matchId = urlParams.get('match');
+      if (matchId) {
+        loadMatchDetail(matchId);
+      }
+    }
+  }, []);
 
   // Load initial world state
   useEffect(() => {
@@ -448,4 +460,8 @@ export default function Home() {
       )}
     </div>
   );
+}
+
+export default function Home() {
+  return <HomeWithParams />;
 }
