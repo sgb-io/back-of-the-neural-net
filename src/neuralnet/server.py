@@ -220,9 +220,14 @@ async def event_stream() -> EventSourceResponse:
 
 @app.get("/api/news")
 async def get_news_feed(limit: int = 20) -> dict:
-    """Get news feed combining recent match reports and upcoming fixtures."""
+    """Get news feed combining recent match reports and upcoming fixtures.
+    
+    Issue #56 fix: This endpoint only shows MediaStoryPublished events that actually exist
+    in the event store. No fictitious reports are generated or displayed before simulation.
+    """
     try:
-        # Get recent match reports
+        # Get recent match reports - only those that actually exist in the event store
+        # (Issue #56: Before any simulation, this will be empty as expected)
         all_events = orchestrator.event_store.get_events()
         media_events = [e for e in all_events if e.event_type == "MediaStoryPublished"]
         
