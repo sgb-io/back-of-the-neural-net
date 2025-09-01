@@ -130,13 +130,15 @@ def create_fantasy_team(team_id: str, team_name: str, league: str) -> Team:
     player_names = get_fantasy_player_names()
     
     # Use team_id as a hash to get a different starting point for each team
+    # Make sure teams have more diverse player names by using larger offsets
     team_seed = hash(team_id) % len(player_names)
+    team_offset = (hash(team_id) // len(player_names)) % (len(player_names) // 3)  # Distribute across 1/3 of names
     name_index = 0
     
     for position, count in positions_needed:
         for i in range(count):
             # Use different players for each team by offsetting the index
-            actual_index = (team_seed + name_index) % len(player_names)
+            actual_index = (team_seed + team_offset + name_index) % len(player_names)
             if actual_index < len(player_names):
                 player_name = player_names[actual_index]
                 name_index += 1

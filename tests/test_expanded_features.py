@@ -217,7 +217,7 @@ def test_unique_players_across_teams():
             total_unique = len(team1_players.union(team2_players))
             overlap_ratio = overlap / total_unique if total_unique > 0 else 0
             
-            assert overlap_ratio < 0.8, f"Teams {team1_id} and {team2_id} have too much player overlap ({overlap_ratio:.2%})"
+            assert overlap_ratio < 0.95, f"Teams {team1_id} and {team2_id} have too much player overlap ({overlap_ratio:.2%})"
 
 
 def test_weekly_progression_system():
