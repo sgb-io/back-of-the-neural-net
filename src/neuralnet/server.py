@@ -466,8 +466,17 @@ def determine_match_importance(home_team, away_team, league: str, world) -> str:
             home_words = set(home_team.name.lower().split())
             away_words = set(away_team.name.lower().split())
             
-            # Common words that might indicate same region
-            if home_words & away_words:  # If they share any words
+            # Exclude generic terms that don't indicate geographic proximity
+            generic_terms = {"united", "city", "fc", "red", "blue", "white", "green", "yellow", 
+                           "black", "claret", "orange", "lions", "eagles", "wolves", "bees", 
+                           "hammers", "spurs", "villa", "forest", "palace", "athletic", "town"}
+            
+            # Only consider significant geographic words, not generic color/nickname terms
+            meaningful_home_words = home_words - generic_terms
+            meaningful_away_words = away_words - generic_terms
+            
+            # Only classify as derby if they share meaningful geographic terms
+            if meaningful_home_words & meaningful_away_words:
                 return "derby"
         
         # Both teams in bottom 4 (relegation battle)

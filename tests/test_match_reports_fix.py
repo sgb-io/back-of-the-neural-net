@@ -114,13 +114,18 @@ def test_media_preview_terminology():
         async def get_media_views(self, entity_type, entity_id):
             return {"media_coverage": [{"outlet_name": "Test Outlet", "reach": 100}]}
     
+    # Create mock world
+    class MockWorld:
+        def get_rivalry_between_teams(self, team1_id, team2_id):
+            return None
+    
     # Test that preview is clearly labeled
     async def run_test():
         home_team = MockTeam("Test United")
         away_team = MockTeam("Test City")
         
         preview = await generate_match_media_preview(
-            home_team, away_team, "derby", MockGameTools()
+            home_team, away_team, "derby", MockGameTools(), MockWorld()
         )
         
         assert preview is not None
