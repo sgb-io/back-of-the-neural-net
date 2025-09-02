@@ -126,6 +126,25 @@ class Team(BaseModel):
     tactical_familiarity: int = Field(default=50, ge=1, le=100)
     reputation: int = Field(default=40, ge=1, le=100, description="Club reputation/prestige level")
     
+    # Financial system
+    balance: int = Field(default=1000000, ge=0, description="Current club balance in currency units")
+    initial_balance: int = Field(default=1000000, ge=0, description="Starting balance for the season")
+    owner_investment: int = Field(default=0, ge=0, description="Owner investment for this season")
+    monthly_wage_costs: int = Field(default=100000, ge=0, description="Monthly player and staff wage costs")
+    monthly_stadium_costs: int = Field(default=50000, ge=0, description="Monthly stadium maintenance costs")
+    monthly_facilities_costs: int = Field(default=25000, ge=0, description="Monthly training facilities costs")
+    
+    # Stadium details
+    stadium_name: str = Field(default="Fantasy Stadium", description="Name of the team's stadium")
+    stadium_capacity: int = Field(default=30000, ge=5000, le=100000, description="Stadium seating capacity")
+    
+    # Training facilities
+    training_facilities_quality: int = Field(default=50, ge=1, le=100, description="Quality of training facilities")
+    
+    # Fanbase
+    fanbase_size: int = Field(default=50000, ge=1000, description="Total supporter base size")
+    season_ticket_holders: int = Field(default=15000, ge=100, description="Number of season ticket holders")
+    
     # Statistics
     matches_played: int = Field(default=0, ge=0)
     wins: int = Field(default=0, ge=0)
@@ -143,6 +162,35 @@ class Team(BaseModel):
     def goal_difference(self) -> int:
         """Calculate goal difference."""
         return self.goals_for - self.goals_against
+    
+    @property
+    def monthly_total_costs(self) -> int:
+        """Calculate total monthly operating costs."""
+        return self.monthly_wage_costs + self.monthly_stadium_costs + self.monthly_facilities_costs
+    
+    @property
+    def season_ticket_revenue(self) -> int:
+        """Calculate annual revenue from season tickets (rough estimate)."""
+        # Average season ticket price varies by club reputation and capacity
+        avg_price = 200 + (self.reputation * 5)  # £200-£700 range
+        return self.season_ticket_holders * avg_price
+    
+    @property
+    def matchday_revenue_per_game(self) -> int:
+        """Calculate estimated revenue per home game."""
+        # Assume 80% attendance for regular matches
+        attendance = int(self.stadium_capacity * 0.8)
+        # Ticket price varies by reputation
+        avg_ticket_price = 20 + (self.reputation * 0.5)  # £20-£70 range
+        return attendance * int(avg_ticket_price)
+    
+    def calculate_stadium_utilization(self) -> float:
+        """Calculate stadium utilization based on fanbase and capacity."""
+        # Larger fanbase relative to capacity means higher utilization
+        if self.stadium_capacity == 0:
+            return 0.0
+        potential_attendance = min(self.fanbase_size * 0.3, self.stadium_capacity)
+        return potential_attendance / self.stadium_capacity
 
 
 class Match(BaseModel):
@@ -188,14 +236,44 @@ class ClubOwner(BaseModel):
     # Hard attributes
     wealth: int = Field(ge=1, le=100, description="Financial resources")
     business_acumen: int = Field(ge=1, le=100, description="Business skills")
+    investment_tendency: int = Field(default=50, ge=1, le=100, description="Likelihood to invest money")
     
     # Soft attributes (LLM-driven)
     ambition: int = Field(default=50, ge=1, le=100, description="Sporting ambition")
     patience: int = Field(default=50, ge=1, le=100, description="Patience with results")
     public_approval: int = Field(default=50, ge=1, le=100, description="Fan approval rating")
     
+    # Financial history
+    total_invested: int = Field(default=0, ge=0, description="Total amount invested in the club")
+    last_investment: int = Field(default=0, ge=0, description="Last investment amount")
+    
     # Metadata
     years_at_club: int = Field(default=1, ge=0)
+    
+    def calculate_potential_investment(self, team_performance: float, financial_need: float) -> int:
+        """Calculate potential investment based on owner characteristics and team situation."""
+        # Base investment capacity based on wealth
+        base_investment = self.wealth * 10000  # Wealth 100 = £1M capacity
+        
+        # Modify by investment tendency
+        investment_willingness = self.investment_tendency / 100.0
+        
+        # Modify by ambition and patience
+        ambition_factor = self.ambition / 100.0
+        patience_factor = self.patience / 100.0
+        
+        # Performance factor: poor performance may trigger more investment if ambitious
+        performance_factor = 1.0
+        if team_performance < 0.5 and self.ambition > 60:
+            performance_factor = 1.5  # Ambitious owners invest more when team struggles
+        elif team_performance > 0.8:
+            performance_factor = 0.7  # Less need to invest when doing well
+        
+        # Financial need factor
+        need_factor = min(financial_need, 2.0)  # Cap at 2x multiplier
+        
+        potential = base_investment * investment_willingness * ambition_factor * performance_factor * need_factor
+        return int(potential * 0.2)  # Only invest up to 20% of capacity per season
 
 
 class MediaOutlet(BaseModel):
@@ -429,3 +507,86 @@ class GameWorld(BaseModel):
                 if player.suspension_matches_remaining <= 0:
                     player.suspended = False
                     player.suspension_matches_remaining = 0
+    
+    def advance_monthly_finances(self) -> None:
+        """Advance monthly financial progression for all teams."""
+        import random
+        rng = random.Random(self.season * 12 + 42)  # Different seed each month
+        
+        for team in self.teams.values():
+            # Apply monthly costs
+            monthly_costs = team.monthly_total_costs
+            team.balance = max(0, team.balance - monthly_costs)
+            
+            # Add matchday revenue (estimate 2 home games per month)
+            matchday_income = team.matchday_revenue_per_game * 2
+            team.balance += matchday_income
+            
+            # Potential owner investment based on team performance and financial situation
+            owners = self.get_club_owners_for_team(team.id)
+            if owners:
+                owner = owners[0]  # Primary owner
+                
+                # Calculate team performance (simple metric)
+                if team.matches_played > 0:
+                    performance = (team.wins * 3 + team.draws) / (team.matches_played * 3)
+                else:
+                    performance = 0.5  # Neutral performance
+                
+                # Financial need factor
+                financial_need = max(0, (monthly_costs * 3 - team.balance) / (monthly_costs * 3))
+                
+                # Random chance for investment
+                if rng.random() < 0.3:  # 30% chance per month
+                    potential_investment = owner.calculate_potential_investment(performance, financial_need)
+                    if potential_investment > 10000:  # Minimum threshold
+                        team.balance += potential_investment
+                        team.owner_investment += potential_investment
+                        owner.total_invested += potential_investment
+                        owner.last_investment = potential_investment
+    
+    def advance_seasonal_evolution(self) -> None:
+        """Advance seasonal evolution of club finances and reputation (max 20% change)."""
+        import random
+        rng = random.Random(self.season * 365 + 42)
+        
+        for team in self.teams.values():
+            # Reputation evolution based on performance and random factors
+            if team.matches_played > 0:
+                performance = (team.wins * 3 + team.draws) / (team.matches_played * 3)
+                league_position_factor = 1.0  # Could be enhanced with actual league position
+                
+                # Performance influence on reputation (max ±10 points)
+                performance_change = int((performance - 0.5) * 20)  # -10 to +10
+                performance_change = max(-10, min(10, performance_change))
+                
+                # Random factor (max ±5 points)
+                random_change = rng.randint(-5, 5)
+                
+                # Total change (max ±15 points, which is 15% of 100)
+                total_rep_change = performance_change + random_change
+                new_reputation = team.reputation + total_rep_change
+                team.reputation = max(1, min(100, new_reputation))
+            
+            # Financial evolution - initial balance for next season
+            # Successful teams get better financial backing
+            reputation_factor = team.reputation / 100.0
+            performance_factor = 1.0
+            if team.matches_played > 0:
+                performance_factor = 0.8 + (team.wins / max(1, team.matches_played)) * 0.4
+            
+            # Owner wealth can also evolve
+            owners = self.get_club_owners_for_team(team.id)
+            if owners:
+                owner = owners[0]
+                # Owner wealth can change by up to 10% per season
+                wealth_change = rng.randint(-10, 15)  # Slight positive bias
+                new_wealth = owner.wealth + wealth_change
+                owner.wealth = max(1, min(100, new_wealth))
+                
+                # Update team's financial situation for new season
+                wealth_factor = owner.wealth / 100.0
+                base_balance = 500000 + (team.reputation * 10000)  # £500k to £1.5M base
+                team.initial_balance = int(base_balance * wealth_factor * performance_factor)
+                team.balance = max(team.balance, team.initial_balance // 2)  # Don't drop below half
+                team.owner_investment = 0  # Reset for new season

@@ -126,11 +126,60 @@ def create_fantasy_team(team_id: str, team_name: str, league: str) -> Team:
     # Ensure reputation stays within bounds
     team_reputation = max(1, min(100, base_reputation))
     
+    # Generate stadium details based on reputation
+    stadium_names = _generate_stadium_name(team_name, team_rng)
+    
+    # Stadium capacity based on reputation and some variance
+    base_capacity = 20000 + (team_reputation * 500)  # 20k to 70k range
+    capacity_variance = team_rng.randint(-5000, 15000)  # Add some randomness
+    stadium_capacity = max(10000, min(100000, base_capacity + capacity_variance))
+    
+    # Fanbase size influenced by reputation and stadium capacity
+    base_fanbase = team_reputation * 1000  # 30k to 100k base
+    fanbase_variance = team_rng.randint(-10000, 20000)
+    fanbase_size = max(5000, base_fanbase + fanbase_variance)
+    
+    # Season ticket holders (typically 30-60% of stadium capacity for successful clubs)
+    st_ratio = 0.2 + (team_reputation / 100.0) * 0.4  # 20% to 60%
+    season_ticket_holders = int(stadium_capacity * st_ratio * team_rng.uniform(0.8, 1.2))
+    season_ticket_holders = max(500, min(season_ticket_holders, int(stadium_capacity * 0.8)))
+    
+    # Financial setup based on reputation and owner wealth
+    base_balance = 500000 + (team_reputation * 15000)  # £500k to £2M
+    initial_balance = base_balance + team_rng.randint(-200000, 500000)
+    initial_balance = max(100000, initial_balance)
+    
+    # Monthly costs based on club size and reputation
+    base_wages = 50000 + (team_reputation * 1500)  # £50k to £200k per month
+    monthly_wage_costs = base_wages + team_rng.randint(-10000, 20000)
+    
+    stadium_costs = 10000 + (stadium_capacity // 1000) * 1000  # £10k-£100k based on capacity
+    facilities_costs = 5000 + (team_reputation * 300)  # £5k-£35k based on reputation
+    
+    # Training facilities quality correlates with reputation but has variance
+    training_quality = team_reputation + team_rng.randint(-15, 15)
+    training_quality = max(1, min(100, training_quality))
+    
     team = Team(
         id=team_id,
         name=team_name,
         league=league,
-        reputation=team_reputation
+        reputation=team_reputation,
+        # Financial setup
+        balance=initial_balance,
+        initial_balance=initial_balance,
+        owner_investment=0,
+        monthly_wage_costs=monthly_wage_costs,
+        monthly_stadium_costs=stadium_costs,
+        monthly_facilities_costs=facilities_costs,
+        # Stadium
+        stadium_name=stadium_names,
+        stadium_capacity=stadium_capacity,
+        # Training facilities
+        training_facilities_quality=training_quality,
+        # Fanbase
+        fanbase_size=fanbase_size,
+        season_ticket_holders=season_ticket_holders
     )
     
     # Create a full squad with starting 11, subs, and squad depth (~25 players)
@@ -325,6 +374,43 @@ def get_fantasy_player_names() -> list[str]:
     ]
 
 
+def _generate_stadium_name(team_name: str, rng) -> str:
+    """Generate a fantasy stadium name based on team name."""
+    # Extract base name (remove color descriptors)
+    base_words = []
+    color_words = {"red", "blue", "white", "black", "green", "yellow", "claret", "orange"}
+    
+    words = team_name.lower().split()
+    for word in words:
+        if word not in color_words:
+            base_words.append(word.capitalize())
+    
+    if not base_words:
+        base_words = [team_name.split()[0].capitalize()]
+    
+    # Stadium naming patterns
+    patterns = [
+        f"{base_words[0]} Park",
+        f"{base_words[0]} Stadium", 
+        f"{base_words[0]} Arena",
+        f"The {base_words[0]} Ground",
+        f"{base_words[0]} Field",
+        f"New {base_words[0]} Stadium",
+    ]
+    
+    # Some special patterns for certain names
+    if "merseyside" in team_name.lower():
+        patterns.extend(["Anfield Fantasy", "Goodison Fantasy"])
+    elif "manchester" in team_name.lower() or "man_" in team_name.lower():
+        patterns.extend(["Old Trafford Fantasy", "Etihad Fantasy"])
+    elif "madrid" in team_name.lower():
+        patterns.extend(["Santiago Bernabéu Fantasy", "Metropolitano Fantasy"])
+    elif "barcelona" in team_name.lower():
+        patterns.extend(["Camp Nou Fantasy"])
+    
+    return rng.choice(patterns)
+
+
 def _create_club_owners(world: GameWorld) -> None:
     """Create club owners for all teams."""
     import random
@@ -342,18 +428,44 @@ def _create_club_owners(world: GameWorld) -> None:
     roles = ["Owner", "Chairman", "Director", "President"]
     name_index = 0
     
-    for team_id in world.teams.keys():
+    for team_id, team in world.teams.items():
+        # Owner wealth should correlate with team reputation
+        # Elite clubs (reputation > 70) get wealthy owners (80-100)
+        # Mid-tier clubs (reputation 40-70) get moderate wealth (50-85)
+        # Lower clubs (reputation < 40) get varied wealth (30-70)
+        
+        team_rep = team.reputation
+        if team_rep > 70:
+            wealth_range = (80, 100)
+        elif team_rep > 40:
+            wealth_range = (50, 85)
+        else:
+            wealth_range = (30, 70)
+        
+        # Add some randomness but keep correlation
+        owner_wealth = random.randint(wealth_range[0], wealth_range[1])
+        
+        # Investment tendency varies independently but wealthy owners tend to invest more
+        base_investment_tendency = 30 + (owner_wealth // 2)  # 45-80 range
+        investment_tendency = random.randint(
+            max(1, base_investment_tendency - 20),
+            min(100, base_investment_tendency + 20)
+        )
+        
         owner = ClubOwner(
             id=str(uuid.uuid4()),
             name=owner_names[name_index % len(owner_names)],
             team_id=team_id,
             role=random.choice(roles),
-            wealth=random.randint(60, 100),
+            wealth=owner_wealth,
             business_acumen=random.randint(40, 90),
+            investment_tendency=investment_tendency,
             ambition=random.randint(40, 80),
             patience=random.randint(30, 70),
             public_approval=random.randint(40, 80),
-            years_at_club=random.randint(1, 10)
+            years_at_club=random.randint(1, 10),
+            total_invested=0,
+            last_investment=0
         )
         world.club_owners[owner.id] = owner
         name_index += 1

@@ -298,6 +298,9 @@ class GameOrchestrator:
                             self.event_store.append_event(story_event)
                             match_reports.append(report)
         
+        # Apply match-based progression (fitness costs, suspensions) after all matches
+        self.world.advance_match_progression(all_events)
+        
         # Advance to next matchday
         self._advance_matchday()
         
@@ -335,6 +338,20 @@ class GameOrchestrator:
         
         # Advance the current date by one week
         self._advance_date_by_week()
+        
+        # Advance weekly player progression (fitness, injuries, suspensions)
+        self.world.advance_weekly_progression()
+        
+        # Advance monthly finances every 4 weeks (approximately monthly)
+        # Use a simple heuristic: if it's been ~4 weeks since season start
+        week_of_season = sum(league.current_matchday for league in self.world.leagues.values()) // len(self.world.leagues)
+        if week_of_season % 4 == 0 and week_of_season > 0:
+            self.world.advance_monthly_finances()
+        
+        # Check if season is complete for all leagues, then run seasonal evolution
+        all_seasons_complete = all(league.is_season_complete() for league in self.world.leagues.values())
+        if all_seasons_complete:
+            self.world.advance_seasonal_evolution()
     
     def _advance_date_by_week(self) -> None:
         """Advance the current date by one week."""
