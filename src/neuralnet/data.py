@@ -106,10 +106,31 @@ def create_sample_world() -> GameWorld:
 
 def create_fantasy_team(team_id: str, team_name: str, league: str) -> Team:
     """Create a fantasy team with generated players."""
+    import random
+    
+    # Use team_id as seed for consistent generation
+    team_rng = random.Random(hash(team_id) % (2**31))
+    
+    # Determine team reputation based on league and some randomness
+    # Premier Fantasy teams tend to have higher reputation than La Fantasia
+    if league == "premier_fantasy":
+        base_reputation = team_rng.randint(35, 85)
+    else:  # la_fantasy
+        base_reputation = team_rng.randint(30, 80)
+    
+    # Certain "big clubs" get reputation boosts based on name patterns
+    big_club_patterns = ["madrid", "barcelona", "man_", "merseyside", "north_london", "west_london_blue"]
+    if any(pattern in team_id.lower() for pattern in big_club_patterns):
+        base_reputation += team_rng.randint(10, 20)
+    
+    # Ensure reputation stays within bounds
+    team_reputation = max(1, min(100, base_reputation))
+    
     team = Team(
         id=team_id,
         name=team_name,
-        league=league
+        league=league,
+        reputation=team_reputation
     )
     
     # Create a full squad with starting 11, subs, and squad depth (~25 players)
@@ -239,14 +260,30 @@ def create_fantasy_player(name: str, position: Position) -> Player:
         # Young players often have high fitness but inconsistent form
         fitness = player_rng.randint(85, 100)
         form = player_rng.randint(40, 70)
+        # Young players typically have lower reputation unless they're prodigies
+        reputation = player_rng.randint(15, 40)
     elif age > 32:
-        # Older players may have lower fitness
+        # Older players may have lower fitness but established reputation
         fitness = player_rng.randint(70, 95)
         form = player_rng.randint(45, 75)
+        # Older players typically have higher reputation from career achievements
+        reputation = player_rng.randint(40, 75)
     else:
         # Prime age players
         fitness = player_rng.randint(80, 100) 
         form = player_rng.randint(45, 75)
+        # Prime age players have moderate to high reputation
+        reputation = player_rng.randint(25, 65)
+    
+    # Adjust reputation based on overall ability (players with higher stats tend to be more famous)
+    overall_ability = sum(base_stats.values()) / len(base_stats)
+    if overall_ability > 70:
+        reputation += player_rng.randint(10, 20)  # High ability players get reputation boost
+    elif overall_ability < 50:
+        reputation -= player_rng.randint(5, 15)   # Low ability players get reputation penalty
+        
+    # Ensure reputation stays within bounds
+    reputation = max(1, min(100, reputation))
     
     return Player(
         id=str(uuid.uuid4()),
@@ -256,6 +293,7 @@ def create_fantasy_player(name: str, position: Position) -> Player:
         peak_age=peak_age,
         fitness=fitness,
         form=form,
+        reputation=reputation,
         sharpness=player_rng.randint(70, 85),  # Start with reasonable sharpness
         **base_stats
     )
