@@ -50,6 +50,11 @@ class Player(BaseModel):
     yellow_cards: int = Field(default=0, ge=0)
     red_cards: int = Field(default=0, ge=0)
     
+    # Contract and value information
+    contract_years_remaining: int = Field(default=2, ge=0, description="Years remaining on current contract")
+    salary: int = Field(default=25000, ge=0, description="Annual salary")
+    market_value: int = Field(default=100000, ge=0, description="Estimated market value")
+    
     @property
     def base_attributes(self) -> Dict[str, int]:
         """Get base attributes before age modifiers."""
@@ -110,6 +115,36 @@ class Player(BaseModel):
         
         overall = base_rating + form_modifier + fitness_modifier + sharpness_modifier + injury_modifier
         return max(1, min(100, int(overall)))
+    
+    @property
+    def calculated_market_value(self) -> int:
+        """Calculate market value based on attributes, age, reputation and form."""
+        # Base value from overall rating (£50k to £5M range)
+        base_value = (self.overall_rating ** 2) * 500  # Exponential growth for higher ratings
+        
+        # Age factor (players in their prime are worth more)
+        age_factor = 1.0
+        age_diff = abs(self.age - self.peak_age)
+        if age_diff <= 2:
+            age_factor = 1.2  # Peak years bonus
+        elif self.age < self.peak_age:
+            # Young player potential
+            age_factor = 0.8 + (0.4 * (self.peak_age - self.age) / (self.peak_age - 15))
+        else:
+            # Declining player
+            age_factor = max(0.3, 1.0 - (age_diff * 0.1))
+        
+        # Reputation factor (10% to 150% multiplier)
+        reputation_factor = 0.1 + (self.reputation / 100.0) * 1.4
+        
+        # Form factor (affects current value)
+        form_factor = 0.8 + (self.form / 100.0) * 0.4
+        
+        # Injury penalty
+        injury_factor = 0.7 if self.injured else 1.0
+        
+        calculated_value = int(base_value * age_factor * reputation_factor * form_factor * injury_factor)
+        return max(50000, calculated_value)  # Minimum £50k value
 
 
 class Team(BaseModel):

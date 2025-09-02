@@ -772,7 +772,10 @@ async def get_team_details(team_id: str) -> dict:
                     "reputation": player.reputation,
                     "injured": player.injured,
                     "yellow_cards": player.yellow_cards,
-                    "red_cards": player.red_cards
+                    "red_cards": player.red_cards,
+                    "contract_years_remaining": player.contract_years_remaining,
+                    "salary": player.salary,
+                    "market_value": player.market_value
                 }
                 for player in team.players
             ],
@@ -1005,6 +1008,9 @@ async def get_player_details(player_id: str) -> dict:
             "injured": player.injured,
             "yellow_cards": player.yellow_cards,
             "red_cards": player.red_cards,
+            "contract_years_remaining": player.contract_years_remaining,
+            "salary": player.salary,
+            "market_value": player.market_value,
             "current_team": {
                 "id": current_team.id,
                 "name": current_team.name,
