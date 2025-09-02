@@ -947,3 +947,138 @@ code {
     gap: 10px;
   }
 }
+
+/* Club ownership and staff styles */
+.ownership-list, .staff-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.owner-card, .staff-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+  background: #fafafa;
+  transition: background-color 0.2s;
+}
+
+.owner-card:hover, .staff-card:hover {
+  background: #f0f0f0;
+}
+
+.owner-header, .staff-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 8px;
+}
+
+.owner-header h3, .staff-header h3 {
+  margin: 0;
+  color: #2c5530;
+  font-size: 16px;
+}
+
+.owner-role, .staff-role {
+  background: #4a7c59;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.owner-details, .staff-details {
+  margin-top: 8px;
+}
+
+.owner-stats, .staff-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+/* History styles */
+.history-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.history-event {
+  border-left: 3px solid #4a7c59;
+  padding: 8px 12px;
+  background: #fafafa;
+  border-radius: 0 4px 4px 0;
+  margin-bottom: 4px;
+}
+
+.event-timestamp {
+  font-size: 11px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.event-description {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.event-type-goal {
+  background: #2ecc71;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.event-type-yellowcard {
+  background: #f39c12;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.event-type-redcard {
+  background: #e74c3c;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.event-type-matchended {
+  background: #2c5530;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.event-text {
+  font-size: 13px;
+  color: #333;
+}
+
+@media (max-width: 768px) {
+  .owner-stats, .staff-stats {
+    grid-template-columns: 1fr;
+  }
+}

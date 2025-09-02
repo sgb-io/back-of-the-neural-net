@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
-import { TeamDetail, TeamMatchesResponse, WorldState } from '@/types/api';
+import { TeamDetail, TeamMatchesResponse, WorldState, TeamHistoryResponse } from '@/types/api';
 import TeamLink from '@/components/TeamLink';
 
 interface TeamPageProps {
@@ -17,6 +17,7 @@ export default function TeamPage({ params }: TeamPageProps) {
   
   const [teamDetail, setTeamDetail] = useState<TeamDetail | null>(null);
   const [teamMatches, setTeamMatches] = useState<TeamMatchesResponse | null>(null);
+  const [teamHistory, setTeamHistory] = useState<TeamHistoryResponse | null>(null);
   const [worldState, setWorldState] = useState<WorldState | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
@@ -64,13 +65,15 @@ export default function TeamPage({ params }: TeamPageProps) {
         }
       }
       
-      // Load team matches and world state in parallel
-      const [matchesResponse, worldResponse] = await Promise.all([
+      // Load team matches, history and world state in parallel
+      const [matchesResponse, historyResponse, worldResponse] = await Promise.all([
         axios.get<TeamMatchesResponse>(`/api/teams/${actualTeamId}/matches?limit=10`),
+        axios.get<TeamHistoryResponse>(`/api/teams/${actualTeamId}/history?limit=10`),
         axios.get<WorldState>('/api/world')
       ]);
       
       setTeamMatches(matchesResponse.data);
+      setTeamHistory(historyResponse.data);
       setWorldState(worldResponse.data);
     } catch (error) {
       console.error('Failed to load team data:', error);
@@ -236,6 +239,124 @@ export default function TeamPage({ params }: TeamPageProps) {
             </div>
           ) : (
             <div>No matches found for this team.</div>
+          )}
+        </div>
+
+        {/* Club Ownership Panel */}
+        <div className="panel">
+          <h2>Club Ownership</h2>
+          {teamDetail.club_owners && teamDetail.club_owners.length > 0 ? (
+            <div className="ownership-list">
+              {teamDetail.club_owners.map((owner) => (
+                <div key={owner.id} className="owner-card">
+                  <div className="owner-header">
+                    <h3>{owner.name}</h3>
+                    <span className="owner-role">{owner.role}</span>
+                  </div>
+                  <div className="owner-details">
+                    <div className="owner-stats">
+                      <div className="stat-row">
+                        <span className="stat-label">Wealth:</span>
+                        <span className="stat-value">{owner.wealth}/100</span>
+                      </div>
+                      <div className="stat-row">
+                        <span className="stat-label">Business Acumen:</span>
+                        <span className="stat-value">{owner.business_acumen}/100</span>
+                      </div>
+                      <div className="stat-row">
+                        <span className="stat-label">Ambition:</span>
+                        <span className="stat-value">{owner.ambition}/100</span>
+                      </div>
+                      <div className="stat-row">
+                        <span className="stat-label">Patience:</span>
+                        <span className="stat-value">{owner.patience}/100</span>
+                      </div>
+                      <div className="stat-row">
+                        <span className="stat-label">Public Approval:</span>
+                        <span className="stat-value">{owner.public_approval}/100</span>
+                      </div>
+                      <div className="stat-row">
+                        <span className="stat-label">Years at Club:</span>
+                        <span className="stat-value">{owner.years_at_club}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div>No ownership information available.</div>
+          )}
+        </div>
+
+        {/* Staff Members Panel */}
+        <div className="panel">
+          <h2>Staff Members</h2>
+          {teamDetail.staff_members && teamDetail.staff_members.length > 0 ? (
+            <div className="staff-list">
+              {teamDetail.staff_members.map((staff) => (
+                <div key={staff.id} className="staff-card">
+                  <div className="staff-header">
+                    <h3>{staff.name}</h3>
+                    <span className="staff-role">{staff.role}</span>
+                  </div>
+                  <div className="staff-details">
+                    <div className="staff-stats">
+                      <div className="stat-row">
+                        <span className="stat-label">Experience:</span>
+                        <span className="stat-value">{staff.experience}/100</span>
+                      </div>
+                      <div className="stat-row">
+                        <span className="stat-label">Specialization:</span>
+                        <span className="stat-value">{staff.specialization}/100</span>
+                      </div>
+                      <div className="stat-row">
+                        <span className="stat-label">Morale:</span>
+                        <span className="stat-value">{staff.morale}/100</span>
+                      </div>
+                      <div className="stat-row">
+                        <span className="stat-label">Team Rapport:</span>
+                        <span className="stat-value">{staff.team_rapport}/100</span>
+                      </div>
+                      <div className="stat-row">
+                        <span className="stat-label">Contract:</span>
+                        <span className="stat-value">{staff.contract_years_remaining} years</span>
+                      </div>
+                      <div className="stat-row">
+                        <span className="stat-label">Salary:</span>
+                        <span className="stat-value">£{staff.salary.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div>No staff information available.</div>
+          )}
+        </div>
+
+        {/* Team History Panel */}
+        <div className="panel">
+          <h2>Recent History</h2>
+          {teamHistory && teamHistory.events.length > 0 ? (
+            <div className="history-list">
+              {teamHistory.events.map((event) => (
+                <div key={event.id} className="history-event">
+                  <div className="event-timestamp">
+                    {new Date(event.timestamp).toLocaleDateString()}
+                  </div>
+                  <div className="event-description">
+                    <span className={`event-type-${event.event_type.toLowerCase()}`}>
+                      {event.event_type}
+                    </span>
+                    <span className="event-text">{event.description}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div>No recent history available.</div>
           )}
         </div>
 
