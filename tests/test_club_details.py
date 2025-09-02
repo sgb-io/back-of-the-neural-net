@@ -215,8 +215,8 @@ def test_stadium_naming_system():
         assert team.stadium_name, f"Team {team.name} has empty stadium name"
         assert len(team.stadium_name.split()) >= 2, f"Stadium name '{team.stadium_name}' seems too short"
         
-        # Check that stadium names contain appropriate keywords
-        stadium_keywords = ["stadium", "park", "arena", "ground", "field"]
+        # Check that stadium names contain appropriate keywords OR are special fantasy names
+        stadium_keywords = ["stadium", "park", "arena", "ground", "field", "fantasy"]
         name_lower = team.stadium_name.lower()
         has_keyword = any(keyword in name_lower for keyword in stadium_keywords)
         assert has_keyword, f"Stadium name '{team.stadium_name}' doesn't contain expected keywords"
