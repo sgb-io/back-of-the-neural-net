@@ -717,6 +717,10 @@ async def get_team_details(team_id: str) -> dict:
         if not team:
             raise HTTPException(status_code=404, detail="Team not found")
         
+        # Get club owners and staff for this team
+        club_owners = orchestrator.world.get_club_owners_for_team(team_id)
+        staff_members = orchestrator.world.get_staff_for_team(team_id)
+        
         return {
             "id": team.id,
             "name": team.name,
@@ -751,6 +755,34 @@ async def get_team_details(team_id: str) -> dict:
                     "red_cards": player.red_cards
                 }
                 for player in team.players
+            ],
+            "club_owners": [
+                {
+                    "id": owner.id,
+                    "name": owner.name,
+                    "role": owner.role,
+                    "wealth": owner.wealth,
+                    "business_acumen": owner.business_acumen,
+                    "ambition": owner.ambition,
+                    "patience": owner.patience,
+                    "public_approval": owner.public_approval,
+                    "years_at_club": owner.years_at_club
+                }
+                for owner in club_owners
+            ],
+            "staff_members": [
+                {
+                    "id": staff.id,
+                    "name": staff.name,
+                    "role": staff.role,
+                    "experience": staff.experience,
+                    "specialization": staff.specialization,
+                    "morale": staff.morale,
+                    "team_rapport": staff.team_rapport,
+                    "contract_years_remaining": staff.contract_years_remaining,
+                    "salary": staff.salary
+                }
+                for staff in staff_members
             ]
         }
     except HTTPException:
@@ -801,6 +833,117 @@ async def get_team_matches(team_id: str, limit: int = 10) -> dict:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/teams/{team_id}/history")
+async def get_team_history(team_id: str, limit: int = 20) -> dict:
+    """Get historical events for a specific team."""
+    try:
+        team = orchestrator.world.get_team_by_id(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found")
+        
+        # Get all events from the event store
+        all_events = orchestrator.event_store.get_events()
+        
+        # Filter events related to this team
+        team_events = []
+        for event in all_events:
+            # Check if this event is related to the team
+            is_team_related = False
+            event_data = {}
+            
+            # Handle different event types  
+            if hasattr(event, 'team_id') and event.team_id == team_id:
+                is_team_related = True
+            elif hasattr(event, 'home_team_id') and event.home_team_id == team_id:
+                is_team_related = True
+            elif hasattr(event, 'away_team_id') and event.away_team_id == team_id:
+                is_team_related = True
+            elif hasattr(event, 'home_team') and event.home_team == team.name:
+                is_team_related = True
+            elif hasattr(event, 'away_team') and event.away_team == team.name:
+                is_team_related = True
+            elif hasattr(event, 'team') and event.team == team_id:
+                is_team_related = True
+            elif hasattr(event, 'entities_mentioned') and team_id in event.entities_mentioned:
+                is_team_related = True
+            
+            if is_team_related:
+                event_data = {
+                    "id": event.id,
+                    "timestamp": event.timestamp.isoformat(),
+                    "event_type": event.event_type,
+                    "description": _format_event_description(event, team.name)
+                }
+                
+                # Add specific data based on event type
+                if event.event_type == "OwnerStatement":
+                    event_data.update({
+                        "statement_type": event.statement_type,
+                        "message": event.message,
+                        "public_reaction": event.public_reaction
+                    })
+                elif event.event_type == "MediaStoryPublished":
+                    event_data.update({
+                        "headline": event.headline,
+                        "story_type": event.story_type,
+                        "sentiment": event.sentiment
+                    })
+                elif event.event_type in ["MatchStarted", "MatchEnded"]:
+                    # Get team names for match events
+                    home_team = orchestrator.world.get_team_by_id(event.home_team_id)
+                    away_team = orchestrator.world.get_team_by_id(event.away_team_id)
+                    if home_team and away_team:
+                        event_data.update({
+                            "home_team": home_team.name,
+                            "away_team": away_team.name,
+                            "home_score": getattr(event, 'home_score', None),
+                            "away_score": getattr(event, 'away_score', None)
+                        })
+                
+                team_events.append(event_data)
+        
+        # Sort by timestamp (most recent first) and limit
+        team_events.sort(key=lambda e: e["timestamp"], reverse=True)
+        team_events = team_events[:limit]
+        
+        return {
+            "team_id": team_id,
+            "team_name": team.name,
+            "events": team_events,
+            "total": len(team_events)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def _format_event_description(event, team_name: str) -> str:
+    """Format a human-readable description for an event."""
+    if event.event_type == "OwnerStatement":
+        owner = orchestrator.world.get_club_owner_by_id(event.owner_id)
+        owner_name = owner.name if owner else "Club Owner"
+        return f"{owner_name} made a {event.statement_type} statement"
+    elif event.event_type == "MediaStoryPublished":
+        return f"Media story: {event.headline}"
+    elif event.event_type == "MatchStarted":
+        return f"Match started vs {event.away_team if event.home_team == team_name else event.home_team}"
+    elif event.event_type == "MatchEnded":
+        opponent = event.away_team if event.home_team == team_name else event.home_team
+        if event.home_team == team_name:
+            return f"Match ended: {team_name} {event.home_score} - {event.away_score} {opponent}"
+        else:
+            return f"Match ended: {opponent} {event.home_score} - {event.away_score} {team_name}"
+    elif event.event_type == "Goal":
+        return f"Goal scored by {event.scorer}"
+    elif event.event_type == "YellowCard":
+        return f"Yellow card shown to {event.player}"
+    elif event.event_type == "RedCard":
+        return f"Red card shown to {event.player}"
+    
+    return f"{event.event_type} event"
 
 
 @app.get("/api/players/{player_id}")

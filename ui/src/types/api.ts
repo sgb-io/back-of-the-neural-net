@@ -94,6 +94,54 @@ export interface Player {
   red_cards: number;
 }
 
+export interface ClubOwner {
+  id: string;
+  name: string;
+  role: string;
+  wealth: number;
+  business_acumen: number;
+  ambition: number;
+  patience: number;
+  public_approval: number;
+  years_at_club: number;
+}
+
+export interface StaffMember {
+  id: string;
+  name: string;
+  role: string;
+  experience: number;
+  specialization: number;
+  morale: number;
+  team_rapport: number;
+  contract_years_remaining: number;
+  salary: number;
+}
+
+export interface TeamHistoryEvent {
+  id: string;
+  timestamp: string;
+  event_type: string;
+  description: string;
+  statement_type?: string;
+  message?: string;
+  public_reaction?: number;
+  headline?: string;
+  story_type?: string;
+  sentiment?: number;
+  home_team?: string;
+  away_team?: string;
+  home_score?: number;
+  away_score?: number;
+}
+
+export interface TeamHistoryResponse {
+  team_id: string;
+  team_name: string;
+  events: TeamHistoryEvent[];
+  total: number;
+}
+
 export interface TeamDetail {
   id: string;
   name: string;
@@ -109,6 +157,8 @@ export interface TeamDetail {
   goal_difference: number;
   points: number;
   players: Player[];
+  club_owners: ClubOwner[];
+  staff_members: StaffMember[];
 }
 
 export interface TeamMatchesResponse {
