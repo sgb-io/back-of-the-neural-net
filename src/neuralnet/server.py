@@ -736,6 +736,24 @@ async def get_team_details(team_id: str) -> dict:
             "goals_against": team.goals_against,
             "goal_difference": team.goal_difference,
             "points": team.points,
+            # Financial information
+            "balance": team.balance,
+            "initial_balance": team.initial_balance,
+            "owner_investment": team.owner_investment,
+            "monthly_wage_costs": team.monthly_wage_costs,
+            "monthly_stadium_costs": team.monthly_stadium_costs,
+            "monthly_facilities_costs": team.monthly_facilities_costs,
+            "monthly_total_costs": team.monthly_total_costs,
+            "season_ticket_revenue": team.season_ticket_revenue,
+            "matchday_revenue_per_game": team.matchday_revenue_per_game,
+            # Stadium and facilities
+            "stadium_name": team.stadium_name,
+            "stadium_capacity": team.stadium_capacity,
+            "training_facilities_quality": team.training_facilities_quality,
+            # Fanbase
+            "fanbase_size": team.fanbase_size,
+            "season_ticket_holders": team.season_ticket_holders,
+            "stadium_utilization": team.calculate_stadium_utilization(),
             "players": [
                 {
                     "id": player.id,

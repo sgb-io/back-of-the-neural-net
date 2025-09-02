@@ -158,6 +158,24 @@ export interface TeamDetail {
   goals_against: number;
   goal_difference: number;
   points: number;
+  // Financial information
+  balance: number;
+  initial_balance: number;
+  owner_investment: number;
+  monthly_wage_costs: number;
+  monthly_stadium_costs: number;
+  monthly_facilities_costs: number;
+  monthly_total_costs: number;
+  season_ticket_revenue: number;
+  matchday_revenue_per_game: number;
+  // Stadium and facilities
+  stadium_name: string;
+  stadium_capacity: number;
+  training_facilities_quality: number;
+  // Fanbase
+  fanbase_size: number;
+  season_ticket_holders: number;
+  stadium_utilization: number;
   players: Player[];
   club_owners: ClubOwner[];
   staff_members: StaffMember[];
