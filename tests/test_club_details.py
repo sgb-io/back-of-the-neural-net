@@ -242,3 +242,41 @@ def test_team_financial_data_consistency():
         if team.reputation > 80:
             assert team.monthly_wage_costs > 100000, \
                 f"High reputation team {team.name} has unrealistically low wage costs"
+
+
+def test_orchestrator_integration():
+    """Test that the orchestrator properly integrates with financial evolution."""
+    from src.neuralnet.orchestrator import GameOrchestrator
+    
+    # Create orchestrator with a temporary database
+    orchestrator = GameOrchestrator()
+    orchestrator.initialize_world()
+    
+    # Check that teams have financial data
+    team = next(iter(orchestrator.world.teams.values()))
+    initial_balance = team.balance
+    initial_reputation = team.reputation
+    
+    # Test that evolution methods are accessible
+    assert hasattr(orchestrator.world, 'advance_monthly_finances'), "World missing monthly finances method"
+    assert hasattr(orchestrator.world, 'advance_seasonal_evolution'), "World missing seasonal evolution method" 
+    assert hasattr(orchestrator.world, 'advance_match_progression'), "World missing match progression method"
+    
+    # Test that the methods can be called without errors
+    orchestrator.world.advance_monthly_finances()
+    
+    # Simulate some performance data
+    team.matches_played = 5
+    team.wins = 3
+    team.draws = 1
+    team.losses = 1
+    
+    orchestrator.world.advance_seasonal_evolution()
+    
+    # Check that values are still reasonable after evolution
+    assert team.balance >= 0, "Balance became negative after evolution"
+    assert 1 <= team.reputation <= 100, "Reputation out of bounds after evolution"
+    
+    print(f"✓ Orchestrator integration test passed")
+    print(f"  Balance: £{initial_balance:,} → £{team.balance:,}")
+    print(f"  Reputation: {initial_reputation} → {team.reputation}")
