@@ -6,6 +6,7 @@ import axios from 'axios';
 import { TeamDetail, TeamMatchesResponse, WorldState, TeamHistoryResponse } from '@/types/api';
 import TeamLink from '@/components/TeamLink';
 import { getTeamReputationLevel, getPlayerReputationLevel, getReputationColor } from '@/utils/reputationUtils';
+import { formatCurrency, formatPercentage, formatCapacity } from '@/utils/formatUtils';
 
 interface TeamPageProps {
   params: Promise<{
@@ -186,6 +187,87 @@ export default function TeamPage({ params }: TeamPageProps) {
               >
                 {getTeamReputationLevel(teamDetail.reputation).label}
               </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Club Finances Panel */}
+        <div className="panel">
+          <h2>Club Finances</h2>
+          <div className="team-stats">
+            <div className="stat-row">
+              <span className="stat-label">Current Balance:</span>
+              <span className="stat-value">{formatCurrency(teamDetail.balance)}</span>
+            </div>
+            <div className="stat-row">
+              <span className="stat-label">Initial Balance:</span>
+              <span className="stat-value">{formatCurrency(teamDetail.initial_balance)}</span>
+            </div>
+            <div className="stat-row">
+              <span className="stat-label">Owner Investment:</span>
+              <span className="stat-value">{formatCurrency(teamDetail.owner_investment)}</span>
+            </div>
+            <div className="stat-row">
+              <span className="stat-label">Monthly Wage Costs:</span>
+              <span className="stat-value">{formatCurrency(teamDetail.monthly_wage_costs)}</span>
+            </div>
+            <div className="stat-row">
+              <span className="stat-label">Monthly Stadium Costs:</span>
+              <span className="stat-value">{formatCurrency(teamDetail.monthly_stadium_costs)}</span>
+            </div>
+            <div className="stat-row">
+              <span className="stat-label">Monthly Facilities Costs:</span>
+              <span className="stat-value">{formatCurrency(teamDetail.monthly_facilities_costs)}</span>
+            </div>
+            <div className="stat-row">
+              <span className="stat-label">Total Monthly Costs:</span>
+              <span className="stat-value"><strong>{formatCurrency(teamDetail.monthly_total_costs)}</strong></span>
+            </div>
+            <div className="stat-row">
+              <span className="stat-label">Season Ticket Revenue:</span>
+              <span className="stat-value">{formatCurrency(teamDetail.season_ticket_revenue)}</span>
+            </div>
+            <div className="stat-row">
+              <span className="stat-label">Matchday Revenue (per game):</span>
+              <span className="stat-value">{formatCurrency(teamDetail.matchday_revenue_per_game)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Stadium & Facilities Panel */}
+        <div className="panel">
+          <h2>Stadium & Facilities</h2>
+          <div className="team-stats">
+            <div className="stat-row">
+              <span className="stat-label">Stadium Name:</span>
+              <span className="stat-value">{teamDetail.stadium_name}</span>
+            </div>
+            <div className="stat-row">
+              <span className="stat-label">Stadium Capacity:</span>
+              <span className="stat-value">{teamDetail.stadium_capacity.toLocaleString()}</span>
+            </div>
+            <div className="stat-row">
+              <span className="stat-label">Stadium Utilization:</span>
+              <span className="stat-value">{formatPercentage(teamDetail.stadium_utilization)}</span>
+            </div>
+            <div className="stat-row">
+              <span className="stat-label">Training Facilities Quality:</span>
+              <span className="stat-value">{teamDetail.training_facilities_quality}/100</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Fanbase Panel */}
+        <div className="panel">
+          <h2>Fanbase</h2>
+          <div className="team-stats">
+            <div className="stat-row">
+              <span className="stat-label">Total Fanbase:</span>
+              <span className="stat-value">{teamDetail.fanbase_size.toLocaleString()}</span>
+            </div>
+            <div className="stat-row">
+              <span className="stat-label">Season Ticket Holders:</span>
+              <span className="stat-value">{formatCapacity(teamDetail.season_ticket_holders, teamDetail.stadium_capacity)}</span>
             </div>
           </div>
         </div>
