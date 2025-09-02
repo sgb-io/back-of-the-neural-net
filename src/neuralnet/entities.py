@@ -38,6 +38,7 @@ class Player(BaseModel):
     morale: int = Field(default=50, ge=1, le=100)  # Player morale
     fitness: int = Field(default=100, ge=1, le=100)  # Physical fitness
     sharpness: int = Field(default=75, ge=1, le=100)  # Match sharpness/readiness
+    reputation: int = Field(default=30, ge=1, le=100, description="Player reputation/fame level")
     
     # Metadata
     age: int = Field(ge=15, le=45)  # Extended range for youth development
@@ -123,6 +124,7 @@ class Team(BaseModel):
     # Soft state (LLM-driven)
     team_morale: int = Field(default=50, ge=1, le=100)
     tactical_familiarity: int = Field(default=50, ge=1, le=100)
+    reputation: int = Field(default=40, ge=1, le=100, description="Club reputation/prestige level")
     
     # Statistics
     matches_played: int = Field(default=0, ge=0)

@@ -89,6 +89,7 @@ export interface Player {
   form: number;
   morale: number;
   fitness: number;
+  reputation: number;
   injured: boolean;
   yellow_cards: number;
   red_cards: number;
@@ -148,6 +149,7 @@ export interface TeamDetail {
   league: string;
   team_morale: number;
   tactical_familiarity: number;
+  reputation: number;
   matches_played: number;
   wins: number;
   draws: number;
@@ -208,6 +210,7 @@ export interface PlayerDetail {
   form: number;
   morale: number;
   fitness: number;
+  reputation: number;
   injured: boolean;
   yellow_cards: number;
   red_cards: number;

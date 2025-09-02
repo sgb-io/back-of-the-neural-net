@@ -5,6 +5,7 @@ import Link from 'next/link';
 import axios from 'axios';
 import { PlayerDetail } from '@/types/api';
 import TeamLink from '@/components/TeamLink';
+import { getPlayerReputationLevel, getReputationColor } from '@/utils/reputationUtils';
 
 interface PlayerPageProps {
   params: Promise<{
@@ -120,6 +121,14 @@ export default function PlayerPage({ params }: PlayerPageProps) {
             {playerDetail.position}
           </span>
           {' '}• Age {playerDetail.age} • Overall {playerDetail.overall_rating}
+          {' '}• <span 
+            style={{ 
+              color: getReputationColor(playerDetail.reputation),
+              fontWeight: 'bold'
+            }}
+          >
+            {getPlayerReputationLevel(playerDetail.reputation).label}
+          </span>
         </p>
       </header>
 
@@ -162,6 +171,18 @@ export default function PlayerPage({ params }: PlayerPageProps) {
                 <div className="condition-item">
                   <span className="condition-label">Fitness:</span>
                   <span className="condition-value">{playerDetail.fitness}/100</span>
+                </div>
+                <div className="condition-item">
+                  <span className="condition-label">Reputation:</span>
+                  <span 
+                    className="condition-value"
+                    style={{ 
+                      color: getReputationColor(playerDetail.reputation),
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    {getPlayerReputationLevel(playerDetail.reputation).label}
+                  </span>
                 </div>
                 {playerDetail.injured && (
                   <div className="condition-item">

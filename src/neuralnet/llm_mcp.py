@@ -467,12 +467,33 @@ class ToolsLLMProvider(LLMProvider):
             
             team_name = current_team.name if current_team else "Unknown Team"
             
-            # Generate a summary using available data
-            summary = f"""Based on our scouting analysis, {player.name} is a {player.age}-year-old {player.position.value} currently representing {team_name}. 
+            # Generate a summary using available data, considering reputation level
+            # Higher reputation players get more detailed, famous player treatment
+            # Lower reputation players get more factual, brief treatment
+            
+            if player.reputation >= 70:
+                # High reputation - famous/star player treatment
+                summary = f"""The renowned {player.name} stands as one of the most recognizable figures in modern football. At {player.age} years old, this world-class {player.position.value} has established himself as a cornerstone of {team_name}'s ambitions.
 
-With an overall rating of {player.overall_rating}, our assessment shows a player who brings consistency and reliability to the squad. Their current form rating of {player.form} reflects their recent performances, while maintaining excellent fitness levels at {player.fitness}.
+With an exceptional overall rating of {player.overall_rating}, {player.name} commands respect wherever he plays. His current form of {player.form} showcases the elite mentality that has made him a household name among football enthusiasts worldwide.
 
-The player's attribute profile suggests they are well-suited to their {player.position.value} role, and they continue to be an important squad member this season."""
+Known for his exemplary professionalism and match-winning ability, {player.name} continues to be the player that opposition defenses fear most. His {player.position.value} role has been redefined by his unique playing style and unwavering commitment to excellence."""
+                
+            elif player.reputation >= 45:
+                # Medium reputation - established/known player treatment  
+                summary = f"""A well-regarded professional, {player.name} has built a solid reputation as a dependable {player.position.value} for {team_name}. At {player.age}, he represents the type of experienced player that clubs value for both performance and leadership.
+
+With an overall rating of {player.overall_rating}, {player.name} brings consistency and tactical awareness to his role. His current form rating of {player.form} reflects a player who understands his responsibilities and delivers when called upon.
+
+Having established himself in the league, {player.name} is recognized by fans and peers alike as a quality {player.position.value} who contributes significantly to his team's tactical setup."""
+                
+            else:
+                # Low reputation - factual/brief treatment for lesser-known player
+                summary = f"""{player.name} is a {player.age}-year-old {player.position.value} currently on the books at {team_name}. 
+
+With an overall rating of {player.overall_rating}, he maintains squad status and works to contribute when opportunities arise. His current form stands at {player.form}, reflecting his recent performances in training and match situations.
+
+The {player.position.value} continues to develop his game and seeks to establish himself as a regular contributor to the team's objectives this season."""
             
             return summary
             
@@ -644,12 +665,30 @@ class MockToolsLLMProvider(ToolsLLMProvider):
         
         team_name = current_team.name if current_team else "Unknown Team"
         
-        # Generate a simple mock career summary
-        return f"""Mock analysis: {player.name} is a {player.age}-year-old {player.position.value} currently playing for {team_name}. 
+        # Generate a mock career summary that considers reputation
+        if player.reputation >= 70:
+            # High reputation mock summary
+            return f"""Mock analysis: {player.name} is widely recognized as one of the premier {player.position.value}s in the game today. At {player.age}, this celebrated player continues to be a key figure for {team_name}.
 
-With an overall rating of {player.overall_rating}, they are considered a valuable squad member. Their current form of {player.form} and morale of {player.morale} indicate they are ready to contribute when called upon.
+With an exceptional overall rating of {player.overall_rating}, {player.name} has earned his reputation through consistent elite-level performances. Current form of {player.form} demonstrates why he remains a household name in football.
 
-This mock summary demonstrates the career analysis system is working correctly."""
+This mock summary for a high-reputation player shows the dynamic nature of our analysis system."""
+            
+        elif player.reputation >= 45:
+            # Medium reputation mock summary
+            return f"""Mock analysis: {player.name} is a well-established {player.position.value} who has built a solid reputation at {team_name}. At {player.age}, he represents a dependable option for his club.
+
+With an overall rating of {player.overall_rating}, {player.name} is recognized as a quality player. His current form of {player.form} and morale of {player.morale} reflect a professional who understands his role.
+
+This mock summary demonstrates our system's ability to analyze established players effectively."""
+            
+        else:
+            # Low reputation mock summary 
+            return f"""Mock analysis: {player.name} is a {player.age}-year-old {player.position.value} on the books at {team_name}. 
+
+With an overall rating of {player.overall_rating}, he works to contribute when opportunities arise. Current form stands at {player.form}, reflecting his recent development.
+
+This mock summary shows how our system handles emerging players in the squad."""
     
     async def generate_match_reports(
         self,

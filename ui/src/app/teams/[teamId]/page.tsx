@@ -5,6 +5,7 @@ import Link from 'next/link';
 import axios from 'axios';
 import { TeamDetail, TeamMatchesResponse, WorldState, TeamHistoryResponse } from '@/types/api';
 import TeamLink from '@/components/TeamLink';
+import { getTeamReputationLevel, getPlayerReputationLevel, getReputationColor } from '@/utils/reputationUtils';
 
 interface TeamPageProps {
   params: Promise<{
@@ -128,7 +129,17 @@ export default function TeamPage({ params }: TeamPageProps) {
     <div className="app">
       <header className="header">
         <h1>⚽ {teamDetail.name}</h1>
-        <p>{teamLeague?.name} {teamPosition ? `- Position ${teamPosition}` : ''}</p>
+        <p>
+          {teamLeague?.name} {teamPosition ? `- Position ${teamPosition}` : ''}
+          {' '}• <span 
+            style={{ 
+              color: getReputationColor(teamDetail.reputation),
+              fontWeight: 'bold'
+            }}
+          >
+            {getTeamReputationLevel(teamDetail.reputation).label} Club
+          </span>
+        </p>
       </header>
 
       <div className="team-nav">
@@ -163,6 +174,18 @@ export default function TeamPage({ params }: TeamPageProps) {
             <div className="stat-row">
               <span className="stat-label">Tactical Familiarity:</span>
               <span className="stat-value">{teamDetail.tactical_familiarity}/100</span>
+            </div>
+            <div className="stat-row">
+              <span className="stat-label">Club Reputation:</span>
+              <span 
+                className="stat-value"
+                style={{ 
+                  color: getReputationColor(teamDetail.reputation),
+                  fontWeight: 'bold'
+                }}
+              >
+                {getTeamReputationLevel(teamDetail.reputation).label}
+              </span>
             </div>
           </div>
         </div>
@@ -205,6 +228,15 @@ export default function TeamPage({ params }: TeamPageProps) {
                       </span>
                       <span>Fitness: {player.fitness}</span>
                       <span>Morale: {player.morale}</span>
+                      <span 
+                        className="reputation-indicator"
+                        style={{ 
+                          color: getReputationColor(player.reputation),
+                          fontSize: '0.8em'
+                        }}
+                      >
+                        {getPlayerReputationLevel(player.reputation).label}
+                      </span>
                       {player.injured && <span className="injured">🏥 INJURED</span>}
                       {player.yellow_cards > 0 && <span className="cards">🟨 {player.yellow_cards}</span>}
                       {player.red_cards > 0 && <span className="cards">🟥 {player.red_cards}</span>}

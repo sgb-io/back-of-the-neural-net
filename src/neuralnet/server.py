@@ -727,6 +727,7 @@ async def get_team_details(team_id: str) -> dict:
             "league": team.league,
             "team_morale": team.team_morale,
             "tactical_familiarity": team.tactical_familiarity,
+            "reputation": team.reputation,
             "matches_played": team.matches_played,
             "wins": team.wins,
             "draws": team.draws,
@@ -750,6 +751,7 @@ async def get_team_details(team_id: str) -> dict:
                     "form": player.form,
                     "morale": player.morale,
                     "fitness": player.fitness,
+                    "reputation": player.reputation,
                     "injured": player.injured,
                     "yellow_cards": player.yellow_cards,
                     "red_cards": player.red_cards
@@ -981,6 +983,7 @@ async def get_player_details(player_id: str) -> dict:
             "form": player.form,
             "morale": player.morale,
             "fitness": player.fitness,
+            "reputation": player.reputation,
             "injured": player.injured,
             "yellow_cards": player.yellow_cards,
             "red_cards": player.red_cards,
