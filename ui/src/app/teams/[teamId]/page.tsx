@@ -323,6 +323,17 @@ export default function TeamPage({ params }: TeamPageProps) {
                       {player.yellow_cards > 0 && <span className="cards">🟨 {player.yellow_cards}</span>}
                       {player.red_cards > 0 && <span className="cards">🟥 {player.red_cards}</span>}
                     </div>
+                    <div className="player-contract">
+                      <span className="contract-years">
+                        Contract: {player.contract_years_remaining}yr{player.contract_years_remaining !== 1 ? 's' : ''}
+                      </span>
+                      <span className="salary">
+                        Salary: {formatCurrency(player.salary)}
+                      </span>
+                      <span className="market-value">
+                        Value: {formatCurrency(player.market_value)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}

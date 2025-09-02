@@ -667,6 +667,30 @@ code {
   align-items: center;
 }
 
+.player-contract {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid #e0e0e0;
+  color: #555;
+}
+
+.contract-years {
+  color: #2c5530;
+  font-weight: 500;
+}
+
+.salary {
+  color: #2c5530;
+}
+
+.market-value {
+  color: #1976d2;
+  font-weight: 500;
+}
+
 .form-indicator {
   font-weight: 600;
 }
@@ -728,6 +752,10 @@ code {
   }
   
   .player-condition {
+    flex-wrap: wrap;
+  }
+  
+  .player-contract {
     flex-wrap: wrap;
   }
 }

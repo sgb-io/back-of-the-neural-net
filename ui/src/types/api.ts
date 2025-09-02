@@ -93,6 +93,9 @@ export interface Player {
   injured: boolean;
   yellow_cards: number;
   red_cards: number;
+  contract_years_remaining: number;
+  salary: number;
+  market_value: number;
 }
 
 export interface ClubOwner {
@@ -232,6 +235,9 @@ export interface PlayerDetail {
   injured: boolean;
   yellow_cards: number;
   red_cards: number;
+  contract_years_remaining: number;
+  salary: number;
+  market_value: number;
   current_team: PlayerCurrentTeam;
   season_stats: PlayerSeasonStats;
 }

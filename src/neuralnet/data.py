@@ -334,7 +334,24 @@ def create_fantasy_player(name: str, position: Position) -> Player:
     # Ensure reputation stays within bounds
     reputation = max(1, min(100, reputation))
     
-    return Player(
+    # Generate contract details
+    contract_years = player_rng.randint(1, 5)  # 1 to 5 years remaining
+    
+    # Calculate salary based on ability, age, and reputation
+    base_salary = 15000  # £15k minimum
+    ability_bonus = int(overall_ability * 1000)  # Up to £70k for 70+ rated players
+    reputation_bonus = int(reputation * 500)  # Up to £50k for 100 reputation
+    age_factor = 1.0
+    
+    if age < 23:
+        age_factor = 0.6  # Young players earn less initially
+    elif age > 32:
+        age_factor = 0.8  # Older players may take wage cuts
+    
+    salary = int((base_salary + ability_bonus + reputation_bonus) * age_factor)
+    
+    # Create the player instance 
+    player = Player(
         id=str(uuid.uuid4()),
         name=name,
         position=position,
@@ -344,8 +361,15 @@ def create_fantasy_player(name: str, position: Position) -> Player:
         form=form,
         reputation=reputation,
         sharpness=player_rng.randint(70, 85),  # Start with reasonable sharpness
+        contract_years_remaining=contract_years,
+        salary=salary,
         **base_stats
     )
+    
+    # Set market value using the calculated property
+    player.market_value = player.calculated_market_value
+    
+    return player
 
 
 def get_fantasy_player_names() -> list[str]:
