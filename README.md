@@ -1,8 +1,6 @@
 # Back of the Neural Net
 
-Proper football. Artificial brains.
-
-A football management simulation that combines deterministic match simulation with LLM-driven soft state management for player morale, relationships, and narratives.
+A football management simulation that combines deterministic match simulation with LLM-driven player psychology and narratives.
 
 ## Architecture
 
@@ -20,55 +18,22 @@ A football management simulation that combines deterministic match simulation wi
 
 ### LLM Configuration
 
-The game supports multiple LLM providers for enhanced AI-driven gameplay. Configure once and the entire application will use your preferred provider.
+The game supports multiple LLM providers. By default, it uses a mock LLM for testing.
 
-#### Option 1: Mock LLM (Default)
-No configuration needed. Uses simple rule-based updates for testing and development.
-
+**For Local AI (LM Studio):**
 ```bash
-# This is the default - no environment variables needed
-python main.py server
-```
-
-#### Option 2: LM Studio (Recommended for Local AI)
-[LM Studio](https://lmstudio.ai/) provides local LLM inference with an OpenAI-compatible API.
-
-**Setup Steps:**
-
-1. **Download and install LM Studio** from https://lmstudio.ai/
-2. **Load a model** in LM Studio (e.g., a 7B or 13B parameter model)
-3. **Start the local server** in LM Studio (usually runs on port 1234)
-4. **Configure environment variables:**
-
-```bash
+# Install LM Studio from https://lmstudio.ai/, load a model, start server
 export LLM_PROVIDER=lmstudio
-export LMSTUDIO_MODEL="your-model-name"  # e.g., "llama-2-7b-chat"
-export LMSTUDIO_BASE_URL="http://localhost:1234/v1"  # default LM Studio URL
-```
-
-5. **Start the game server:**
-```bash
+export LMSTUDIO_MODEL="your-model-name"
 python main.py server
 ```
 
-The server will validate your LLM configuration on startup and provide helpful error messages if misconfigured.
-
-#### Option 3: Environment File (Recommended)
-Create a `.env` file in the project root for persistent configuration:
-
+**Using .env file (recommended):**
 ```bash
-# .env file
+# Create .env file in project root
 LLM_PROVIDER=lmstudio
 LMSTUDIO_MODEL=llama-2-7b-chat
 LMSTUDIO_BASE_URL=http://localhost:1234/v1
-LLM_TEMPERATURE=0.7
-LLM_MAX_TOKENS=1000
-```
-
-#### Verify Configuration
-Check your LLM configuration at any time:
-```bash
-curl http://localhost:8000/api/config
 ```
 
 ### Installation
@@ -117,50 +82,22 @@ python main.py test
 LLM_PROVIDER=lmstudio LMSTUDIO_MODEL=llama-2-7b-chat python main.py server
 ```
 
-### Database Reset (Fresh Start)
+### Database Reset
 
-The game uses a persistent SQLite database (`game.db`) to store all events and game state. For testing or to start fresh:
+To start fresh or for testing:
 
 ```bash
-# Start server with clean database
-python main.py server --reset
-
-# Or via environment variable
-RESET_DB=true python main.py server
-
-# Also works with other commands
-python main.py test --reset
-python main.py simulate --reset
-
-# Custom database location
-DB_PATH=/path/to/my/game.db python main.py server
+python main.py server --reset  # Clean database
+RESET_DB=true python main.py server  # Or via environment variable
 ```
-
-**When to use `--reset`:**
-- First time setup
-- Testing or development
-- When you see old data from previous runs
-- To start a completely fresh season
-
-**Note:** Resetting deletes all match history, reports, and progress. Use with caution in production saves.
 
 ## Features
 
-- **Two Fantasy Leagues**: Premier Fantasy League and La Fantasia League
-- **Fantasy Teams & Players**: No real-world IP, all fantasy names
-- **Match Simulation**: Deterministic events (goals, cards, substitutions)
-- **AI-Driven Psychology**: Choose between mock LLM or local LM Studio for dynamic player/team morale and form updates
-- **Local AI Support**: Easy integration with LM Studio for private, local LLM inference
-- **League Tables**: Live updating standings
-- **Event Stream**: Real-time match events
-- **Simple UI**: One-button advancement with live updates
-
-### New Simulation Entities
-
-- **Club Owners/Directors**: Each team has ownership with wealth, ambition, patience, and public approval ratings that change based on performance
-- **Media Outlets**: Fantasy press entities that generate narratives and maintain biases toward different teams
-- **Player Agents**: Professional representatives for ~70% of players with negotiation skills and industry reputation
-- **Staff Members**: Coaches, physios, scouts, and other team personnel with morale and team rapport that affects performance
+- **Two Fantasy Leagues**: Premier Fantasy League and La Fantasia League with fantasy teams & players
+- **Match Simulation**: Deterministic events (goals, cards, substitutions) with live event streams
+- **AI-Driven Psychology**: LLM-powered player/team morale, form, and narrative generation
+- **Club Entities**: Owners, media outlets, player agents, and staff members with dynamic relationships
+- **League Tables**: Live updating standings with simple one-button UI advancement
 
 ## Game Flow
 
@@ -173,35 +110,16 @@ DB_PATH=/path/to/my/game.db python main.py server
 
 ## Architecture Details
 
-### Core Components
+**Core Components:** Event-sourced design with SQLite storage. Key modules include `entities.py` (game models), `simulation.py` (match engine), `llm.py` (AI integration), and `server.py` (FastAPI REST API).
 
-- **`entities.py`**: Game world models (Team, Player, Match, League)
-- **`events.py`**: Event sourcing system with SQLite storage
-- **`simulation.py`**: Deterministic match simulation engine
-- **`llm.py`**: LLM integration for soft state updates
-- **`orchestrator.py`**: Main game loop coordination
-- **`server.py`**: FastAPI REST API
-- **`data.py`**: Fantasy data generation
-
-### API Endpoints
-
-- `GET /api/world` - Get current world state
-- `POST /api/advance` - Advance simulation one step
-- `GET /api/leagues/{id}/table` - Get league table
-- `GET /api/fixtures` - Get upcoming fixtures
-- `GET /api/events/stream` - Server-sent events stream
+**API Endpoints:** `/api/world` (game state), `/api/advance` (simulation step), `/api/leagues/{id}/table`, `/api/fixtures`, `/api/events/stream` (live events).
 
 ## Testing
 
 ```bash
-# Run basic tests
-python tests/test_basic.py
-
-# Or with pytest if available
-pytest tests/
-
-# Test new entities
-python test_new_entities.py
+python main.py test        # Basic test
+python tests/test_basic.py # Run specific tests
+pytest tests/              # Full test suite
 ```
 
 ## Future Enhancements
@@ -217,4 +135,4 @@ python test_new_entities.py
 
 ---
 
-Built with ⚽ and 🧠 for the love of football simulation.
+Built with ⚽ for the love of football simulation.
