@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "back-of-the-neural-net"
 version = "0.1.0"
-description = "Proper football. Artificial brains."
+description = "A football management simulation with LLM-driven player psychology"
 authors = [{name = "Back of the Neural Net Contributors"}]
 readme = "README.md"
 license = {text = "Apache-2.0"}
