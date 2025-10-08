@@ -92,6 +92,11 @@ class Substitution(MatchEvent):
     player_on: str
 
 
+class CornerKick(MatchEvent):
+    """Corner kick event."""
+    team: str
+
+
 class Injury(MatchEvent):
     """Player injury event."""
     player: str
@@ -109,6 +114,15 @@ class MatchEnded(Event):
     home_score: int
     away_score: int
     duration_minutes: int
+    # Match statistics
+    home_possession: Optional[int] = None  # Percentage (0-100)
+    away_possession: Optional[int] = None  # Percentage (0-100)
+    home_shots: Optional[int] = None
+    away_shots: Optional[int] = None
+    home_shots_on_target: Optional[int] = None
+    away_shots_on_target: Optional[int] = None
+    home_corners: Optional[int] = None
+    away_corners: Optional[int] = None
 
 
 class SoftStateUpdated(Event):
@@ -328,6 +342,7 @@ class EventStore:
             "YellowCard": YellowCard,
             "RedCard": RedCard,
             "Substitution": Substitution,
+            "CornerKick": CornerKick,
             "Injury": Injury,
             "MatchEnded": MatchEnded,
             "SoftStateUpdated": SoftStateUpdated,
