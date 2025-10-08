@@ -20,6 +20,20 @@ class Position(str, Enum):
     ST = "ST"  # Striker
 
 
+class PreferredFoot(str, Enum):
+    """Player's preferred foot."""
+    LEFT = "Left"
+    RIGHT = "Right"
+    BOTH = "Both"
+
+
+class WorkRate(str, Enum):
+    """Player work rate for attacking and defending."""
+    LOW = "Low"
+    MEDIUM = "Medium"
+    HIGH = "High"
+
+
 class Player(BaseModel):
     """A football player."""
     id: str
@@ -32,6 +46,11 @@ class Player(BaseModel):
     passing: int = Field(ge=1, le=100)
     defending: int = Field(ge=1, le=100)
     physicality: int = Field(ge=1, le=100)
+    
+    # Player characteristics
+    preferred_foot: PreferredFoot = Field(default=PreferredFoot.RIGHT, description="Player's preferred foot")
+    attacking_work_rate: WorkRate = Field(default=WorkRate.MEDIUM, description="Attacking work rate")
+    defensive_work_rate: WorkRate = Field(default=WorkRate.MEDIUM, description="Defensive work rate")
     
     # Soft attributes (LLM-driven)
     form: int = Field(default=50, ge=1, le=100)  # Current form
@@ -188,6 +207,11 @@ class Team(BaseModel):
     goals_for: int = Field(default=0, ge=0)
     goals_against: int = Field(default=0, ge=0)
     clean_sheets: int = Field(default=0, ge=0, description="Number of matches without conceding")
+    
+    # Streaks
+    current_streak: int = Field(default=0, description="Current winning (+) or losing (-) streak, 0 for draws")
+    longest_winning_streak: int = Field(default=0, ge=0, description="Longest winning streak this season")
+    longest_losing_streak: int = Field(default=0, ge=0, description="Longest losing streak this season")
     
     # Home/Away records
     home_wins: int = Field(default=0, ge=0)

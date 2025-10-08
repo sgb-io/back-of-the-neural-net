@@ -6,11 +6,13 @@ from collections.abc import Generator
 from .entities import GameWorld, Match, Position, Team
 from .events import (
     CornerKick,
+    Foul,
     Goal,
     Injury,
     KickOff,
     MatchEnded,
     MatchEvent,
+    PenaltyAwarded,
     RedCard,
     Substitution,
     YellowCard,
@@ -41,6 +43,10 @@ class MatchSimulator:
         self._away_shots_on_target = 0
         self._home_corners = 0
         self._away_corners = 0
+        self._home_fouls = 0
+        self._away_fouls = 0
+        self._home_penalties = 0
+        self._away_penalties = 0
         self._possession_minutes = {"home": 0, "away": 0}
 
     def simulate(self) -> Generator[MatchEvent, None, None]:
@@ -93,7 +99,11 @@ class MatchSimulator:
             home_shots_on_target=self._home_shots_on_target,
             away_shots_on_target=self._away_shots_on_target,
             home_corners=self._home_corners,
-            away_corners=self._away_corners
+            away_corners=self._away_corners,
+            home_fouls=self._home_fouls,
+            away_fouls=self._away_fouls,
+            home_penalties=self._home_penalties,
+            away_penalties=self._away_penalties
         )
 
     def _simulate_minute(self) -> list[MatchEvent]:
@@ -105,7 +115,11 @@ class MatchSimulator:
             event_type = self._choose_event_type()
             event = self._create_event(event_type)
             if event:
-                events.append(event)
+                # Handle penalty which returns multiple events
+                if isinstance(event, list):
+                    events.extend(event)
+                else:
+                    events.append(event)
         
         # Track shots that don't result in goals or other events (happens more frequently)
         if self.rng.random() < 0.15:  # 15% chance per minute for a shot attempt
@@ -123,6 +137,8 @@ class MatchSimulator:
             ("substitution", 0.01), # Limited substitutions
             ("injury", 0.003),     # ~0.27 injuries per match
             ("corner", 0.1),       # ~9 corners per match
+            ("foul", 0.2),         # ~18 fouls per match
+            ("penalty", 0.001),    # ~0.09 penalties per match (rare)
         ]
 
         total_weight = sum(weight for _, weight in choices)
@@ -136,7 +152,7 @@ class MatchSimulator:
 
         return "goal"  # Default fallback
 
-    def _create_event(self, event_type: str) -> MatchEvent | None:
+    def _create_event(self, event_type: str) -> MatchEvent | list[MatchEvent] | None:
         """Create a specific type of match event."""
         if event_type == "goal":
             return self._create_goal_event()
@@ -150,6 +166,10 @@ class MatchSimulator:
             return self._create_injury_event()
         elif event_type == "corner":
             return self._create_corner_event()
+        elif event_type == "foul":
+            return self._create_foul_event()
+        elif event_type == "penalty":
+            return self._create_penalty_event()
 
         return None
 
@@ -420,6 +440,111 @@ class MatchSimulator:
             away_score=self.match.away_score,
             team=attacking_team.id
         )
+    
+    def _create_foul_event(self) -> Foul:
+        """Create a foul event."""
+        # Choose which team commits the foul (defending team more likely)
+        home_strength = self._calculate_team_strength(self.home_team)
+        away_strength = self._calculate_team_strength(self.away_team)
+        total_strength = home_strength + away_strength
+        
+        # Weaker team more likely to foul (inverse of attacking strength)
+        if self.rng.random() < (away_strength / total_strength):
+            fouling_team = self.home_team
+            self._home_fouls += 1
+        else:
+            fouling_team = self.away_team
+            self._away_fouls += 1
+        
+        # Choose a random player from the fouling team
+        player = self.rng.choice(fouling_team.players)
+        
+        foul_types = ["regular", "dangerous", "professional"]
+        foul_type = self.rng.choice(foul_types)
+        
+        return Foul(
+            match_id=self.match.id,
+            minute=self.match.minute,
+            home_score=self.match.home_score,
+            away_score=self.match.away_score,
+            player=player.name,
+            team=fouling_team.id,
+            foul_type=foul_type
+        )
+    
+    def _create_penalty_event(self) -> list[MatchEvent]:
+        """Create a penalty kick event (award + goal/miss)."""
+        # Choose which team gets the penalty based on attacking strength
+        home_strength = self._calculate_team_strength(self.home_team)
+        away_strength = self._calculate_team_strength(self.away_team)
+        total_strength = home_strength + away_strength
+        
+        if self.rng.random() < (home_strength / total_strength):
+            attacking_team = self.home_team
+            defending_team = self.away_team
+            self._home_penalties += 1
+        else:
+            attacking_team = self.away_team
+            defending_team = self.home_team
+            self._away_penalties += 1
+        
+        events = []
+        
+        # Penalty awarded event
+        reasons = [
+            "Foul in the box",
+            "Handball",
+            "Tripping an attacker",
+            "Dangerous play in the box"
+        ]
+        reason = self.rng.choice(reasons)
+        
+        events.append(PenaltyAwarded(
+            match_id=self.match.id,
+            minute=self.match.minute,
+            home_score=self.match.home_score,
+            away_score=self.match.away_score,
+            team=attacking_team.id,
+            reason=reason
+        ))
+        
+        # 75% chance to score penalty
+        if self.rng.random() < 0.75:
+            # Choose penalty taker (usually a striker or attacking midfielder)
+            attackers = [
+                p for p in attacking_team.players
+                if p.position in [Position.ST, Position.CAM]
+            ]
+            if not attackers:
+                attackers = [
+                    p for p in attacking_team.players if p.position != Position.GK
+                ]
+            
+            scorer = self.rng.choice(attackers) if attackers else attacking_team.players[0]
+            
+            # Update score
+            if attacking_team.id == self.home_team.id:
+                self.match.home_score += 1
+                self._home_shots += 1
+                self._home_shots_on_target += 1
+            else:
+                self.match.away_score += 1
+                self._away_shots += 1
+                self._away_shots_on_target += 1
+            
+            # Goal from penalty
+            events.append(Goal(
+                match_id=self.match.id,
+                minute=self.match.minute,
+                home_score=self.match.home_score,
+                away_score=self.match.away_score,
+                scorer=scorer.name,
+                team=attacking_team.id,
+                assist=None,
+                penalty=True
+            ))
+        
+        return events
 
 
 class MatchEngine:
@@ -480,16 +605,55 @@ class MatchEngine:
             home_team.home_wins += 1
             away_team.losses += 1
             away_team.away_losses += 1
+            # Update streaks
+            self._update_streak(home_team, result="win")
+            self._update_streak(away_team, result="loss")
         elif match.away_score > match.home_score:
             away_team.wins += 1
             away_team.away_wins += 1
             home_team.losses += 1
             home_team.home_losses += 1
+            # Update streaks
+            self._update_streak(away_team, result="win")
+            self._update_streak(home_team, result="loss")
         else:
             home_team.draws += 1
             home_team.home_draws += 1
             away_team.draws += 1
             away_team.away_draws += 1
+            # Update streaks
+            self._update_streak(home_team, result="draw")
+            self._update_streak(away_team, result="draw")
+    
+    def _update_streak(self, team: Team, result: str) -> None:
+        """Update team's current and longest streaks."""
+        if result == "win":
+            if team.current_streak >= 0:
+                # Continue or start winning streak
+                team.current_streak += 1
+            else:
+                # End losing streak, start winning streak
+                team.current_streak = 1
+            
+            # Update longest winning streak if needed
+            if team.current_streak > team.longest_winning_streak:
+                team.longest_winning_streak = team.current_streak
+        
+        elif result == "loss":
+            if team.current_streak <= 0:
+                # Continue or start losing streak
+                team.current_streak -= 1
+            else:
+                # End winning streak, start losing streak
+                team.current_streak = -1
+            
+            # Update longest losing streak if needed
+            if abs(team.current_streak) > team.longest_losing_streak:
+                team.longest_losing_streak = abs(team.current_streak)
+        
+        else:  # draw
+            # Draw ends any streak
+            team.current_streak = 0
 
     def _update_player_form_after_match(self, events: list, match: Match) -> None:
         """Update player form based on match performance."""
