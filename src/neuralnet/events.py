@@ -69,6 +69,7 @@ class Goal(MatchEvent):
     scorer: str
     team: str
     assist: Optional[str] = None
+    penalty: bool = False  # True if goal was from a penalty kick
 
 
 class YellowCard(MatchEvent):
@@ -97,6 +98,19 @@ class CornerKick(MatchEvent):
     team: str
 
 
+class Foul(MatchEvent):
+    """Foul committed event."""
+    player: str
+    team: str
+    foul_type: str  # "regular", "dangerous", "professional"
+
+
+class PenaltyAwarded(MatchEvent):
+    """Penalty kick awarded event."""
+    team: str
+    reason: str  # Description of why penalty was awarded
+
+
 class Injury(MatchEvent):
     """Player injury event."""
     player: str
@@ -123,6 +137,10 @@ class MatchEnded(Event):
     away_shots_on_target: Optional[int] = None
     home_corners: Optional[int] = None
     away_corners: Optional[int] = None
+    home_fouls: Optional[int] = None
+    away_fouls: Optional[int] = None
+    home_penalties: Optional[int] = None  # Penalty kicks taken
+    away_penalties: Optional[int] = None  # Penalty kicks taken
 
 
 class SoftStateUpdated(Event):

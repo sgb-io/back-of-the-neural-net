@@ -3,7 +3,7 @@
 import uuid
 from typing import Dict
 
-from .entities import GameWorld, League, Player, Position, Team, ClubOwner, MediaOutlet, PlayerAgent, StaffMember, Rivalry
+from .entities import GameWorld, League, Player, Position, Team, ClubOwner, MediaOutlet, PlayerAgent, StaffMember, Rivalry, PreferredFoot, WorkRate
 
 
 def create_sample_world() -> GameWorld:
@@ -337,6 +337,48 @@ def create_fantasy_player(name: str, position: Position) -> Player:
     # Generate contract details
     contract_years = player_rng.randint(1, 5)  # 1 to 5 years remaining
     
+    # Determine preferred foot (70% right, 20% left, 10% both)
+    foot_roll = player_rng.random()
+    if foot_roll < 0.70:
+        preferred_foot = PreferredFoot.RIGHT
+    elif foot_roll < 0.90:
+        preferred_foot = PreferredFoot.LEFT
+    else:
+        preferred_foot = PreferredFoot.BOTH
+    
+    # Determine work rates based on position
+    if position == Position.ST:
+        # Strikers tend to have high attacking, low/medium defending
+        attacking_work_rate = player_rng.choice([WorkRate.HIGH, WorkRate.HIGH, WorkRate.MEDIUM])
+        defensive_work_rate = player_rng.choice([WorkRate.LOW, WorkRate.LOW, WorkRate.MEDIUM])
+    elif position in [Position.LW, Position.RW]:
+        # Wingers similar to strikers
+        attacking_work_rate = player_rng.choice([WorkRate.HIGH, WorkRate.MEDIUM])
+        defensive_work_rate = player_rng.choice([WorkRate.LOW, WorkRate.MEDIUM])
+    elif position in [Position.CB, Position.LB, Position.RB]:
+        # Defenders tend to have low attacking, high defending (fullbacks can be medium/high attacking)
+        if position in [Position.LB, Position.RB]:
+            attacking_work_rate = player_rng.choice([WorkRate.LOW, WorkRate.MEDIUM, WorkRate.HIGH])
+        else:
+            attacking_work_rate = player_rng.choice([WorkRate.LOW, WorkRate.MEDIUM])
+        defensive_work_rate = player_rng.choice([WorkRate.HIGH, WorkRate.HIGH, WorkRate.MEDIUM])
+    elif position == Position.CAM:
+        # Attacking midfielders high attacking, low/medium defending
+        attacking_work_rate = player_rng.choice([WorkRate.HIGH, WorkRate.MEDIUM])
+        defensive_work_rate = player_rng.choice([WorkRate.LOW, WorkRate.MEDIUM])
+    elif position == Position.CM:
+        # Central midfielders balanced
+        attacking_work_rate = player_rng.choice([WorkRate.MEDIUM, WorkRate.HIGH])
+        defensive_work_rate = player_rng.choice([WorkRate.MEDIUM, WorkRate.HIGH])
+    elif position in [Position.LM, Position.RM]:
+        # Wide midfielders medium/high attacking, medium defending
+        attacking_work_rate = player_rng.choice([WorkRate.MEDIUM, WorkRate.HIGH])
+        defensive_work_rate = WorkRate.MEDIUM
+    else:  # GK
+        # Goalkeepers have low work rates for both
+        attacking_work_rate = WorkRate.LOW
+        defensive_work_rate = WorkRate.LOW
+    
     # Calculate salary based on ability, age, and reputation
     base_salary = 15000  # £15k minimum
     ability_bonus = int(overall_ability * 1000)  # Up to £70k for 70+ rated players
@@ -363,6 +405,9 @@ def create_fantasy_player(name: str, position: Position) -> Player:
         sharpness=player_rng.randint(70, 85),  # Start with reasonable sharpness
         contract_years_remaining=contract_years,
         salary=salary,
+        preferred_foot=preferred_foot,
+        attacking_work_rate=attacking_work_rate,
+        defensive_work_rate=defensive_work_rate,
         **base_stats
     )
     
