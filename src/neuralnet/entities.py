@@ -187,6 +187,15 @@ class Team(BaseModel):
     losses: int = Field(default=0, ge=0)
     goals_for: int = Field(default=0, ge=0)
     goals_against: int = Field(default=0, ge=0)
+    clean_sheets: int = Field(default=0, ge=0, description="Number of matches without conceding")
+    
+    # Home/Away records
+    home_wins: int = Field(default=0, ge=0)
+    home_draws: int = Field(default=0, ge=0)
+    home_losses: int = Field(default=0, ge=0)
+    away_wins: int = Field(default=0, ge=0)
+    away_draws: int = Field(default=0, ge=0)
+    away_losses: int = Field(default=0, ge=0)
     
     @property
     def points(self) -> int:
@@ -197,6 +206,16 @@ class Team(BaseModel):
     def goal_difference(self) -> int:
         """Calculate goal difference."""
         return self.goals_for - self.goals_against
+    
+    @property
+    def home_points(self) -> int:
+        """Calculate home points."""
+        return self.home_wins * 3 + self.home_draws
+    
+    @property
+    def away_points(self) -> int:
+        """Calculate away points."""
+        return self.away_wins * 3 + self.away_draws
     
     @property
     def monthly_total_costs(self) -> int:
@@ -226,6 +245,36 @@ class Team(BaseModel):
             return 0.0
         potential_attendance = min(self.fanbase_size * 0.3, self.stadium_capacity)
         return potential_attendance / self.stadium_capacity
+    
+    def calculate_prize_money(self, league_position: int, total_teams: int) -> int:
+        """Calculate prize money based on final league position."""
+        # Prize pool varies by league reputation/prestige
+        # Base pool for a league: £50M - £100M depending on reputation
+        base_pool = 50_000_000 + (self.reputation * 500_000)
+        
+        # Distribution: higher positions get more money
+        # 1st place gets ~20% of pool, last place gets ~2%
+        position_factor = (total_teams - league_position + 1) / total_teams
+        # Apply exponential curve to favor top positions
+        position_factor = position_factor ** 1.5
+        
+        # Normalize to ensure total distribution is reasonable
+        prize = int(base_pool * position_factor / total_teams)
+        return max(100_000, prize)  # Minimum £100k prize money
+    
+    def calculate_tv_revenue(self, league_position: int, total_teams: int) -> int:
+        """Calculate TV rights revenue based on league position and appearances."""
+        # Base TV money for participation
+        base_tv_money = 20_000_000 + (self.reputation * 200_000)
+        
+        # Merit payment based on position
+        position_factor = (total_teams - league_position + 1) / total_teams
+        merit_payment = base_tv_money * position_factor * 0.5
+        
+        # Facility payment (broadcast quality venues)
+        facility_bonus = self.stadium_capacity * 50  # £50 per seat capacity
+        
+        return int(base_tv_money + merit_payment + facility_bonus)
 
 
 class Match(BaseModel):
@@ -586,20 +635,34 @@ class GameWorld(BaseModel):
         rng = random.Random(self.season * 365 + 42)
         
         for team in self.teams.values():
+            # Calculate league position for financial bonuses
+            league_table = self.get_league_table(team.league)
+            league_position = next((i + 1 for i, t in enumerate(league_table) if t.id == team.id), 1)
+            total_teams = len(league_table)
+            
+            # Apply end-of-season financial bonuses
+            prize_money = team.calculate_prize_money(league_position, total_teams)
+            tv_revenue = team.calculate_tv_revenue(league_position, total_teams)
+            
+            team.balance += prize_money + tv_revenue
+            
             # Reputation evolution based on performance and random factors
             if team.matches_played > 0:
                 performance = (team.wins * 3 + team.draws) / (team.matches_played * 3)
-                league_position_factor = 1.0  # Could be enhanced with actual league position
                 
                 # Performance influence on reputation (max ±10 points)
                 performance_change = int((performance - 0.5) * 20)  # -10 to +10
                 performance_change = max(-10, min(10, performance_change))
                 
+                # League position influence (top teams gain reputation)
+                position_factor = (total_teams - league_position + 1) / total_teams
+                position_change = int((position_factor - 0.5) * 10)  # -5 to +5
+                
                 # Random factor (max ±5 points)
                 random_change = rng.randint(-5, 5)
                 
-                # Total change (max ±15 points, which is 15% of 100)
-                total_rep_change = performance_change + random_change
+                # Total change (max ±20 points, which is 20% of 100)
+                total_rep_change = performance_change + position_change + random_change
                 new_reputation = team.reputation + total_rep_change
                 team.reputation = max(1, min(100, new_reputation))
             

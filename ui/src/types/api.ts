@@ -11,6 +11,13 @@ export interface TeamTableEntry {
   goals_against: number;
   goal_difference: number;
   points: number;
+  clean_sheets?: number;
+  home_wins?: number;
+  home_draws?: number;
+  home_losses?: number;
+  away_wins?: number;
+  away_draws?: number;
+  away_losses?: number;
 }
 
 export interface League {
@@ -170,6 +177,16 @@ export interface TeamDetail {
   goals_against: number;
   goal_difference: number;
   points: number;
+  clean_sheets: number;
+  // Home/Away records
+  home_wins: number;
+  home_draws: number;
+  home_losses: number;
+  home_points: number;
+  away_wins: number;
+  away_draws: number;
+  away_losses: number;
+  away_points: number;
   // Financial information
   balance: number;
   initial_balance: number;

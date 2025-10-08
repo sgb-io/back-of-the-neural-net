@@ -467,17 +467,29 @@ class MatchEngine:
         home_team.goals_against += match.away_score
         away_team.goals_for += match.away_score
         away_team.goals_against += match.home_score
+        
+        # Track clean sheets
+        if match.away_score == 0:
+            home_team.clean_sheets += 1
+        if match.home_score == 0:
+            away_team.clean_sheets += 1
 
-        # Update win/draw/loss records
+        # Update win/draw/loss records (overall and home/away)
         if match.home_score > match.away_score:
             home_team.wins += 1
+            home_team.home_wins += 1
             away_team.losses += 1
+            away_team.away_losses += 1
         elif match.away_score > match.home_score:
             away_team.wins += 1
+            away_team.away_wins += 1
             home_team.losses += 1
+            home_team.home_losses += 1
         else:
             home_team.draws += 1
+            home_team.home_draws += 1
             away_team.draws += 1
+            away_team.away_draws += 1
 
     def _update_player_form_after_match(self, events: list, match: Match) -> None:
         """Update player form based on match performance."""
