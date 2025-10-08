@@ -1145,6 +1145,101 @@ async def call_game_tool(tool_name: str, arguments: dict) -> dict:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/leagues/{league_id}/top-scorers")
+async def get_league_top_scorers(league_id: str, limit: int = 10) -> dict:
+    """Get top goal scorers for a specific league."""
+    try:
+        if not orchestrator:
+            raise HTTPException(status_code=503, detail="Game not initialized")
+        
+        # Get all teams in the league
+        league = orchestrator.world.get_league_by_id(league_id)
+        if not league:
+            raise HTTPException(status_code=404, detail=f"League {league_id} not found")
+        
+        # Get all completed matches in this league
+        all_events = orchestrator.event_store.get_events()
+        completed_matches = set()
+        for event in all_events:
+            if isinstance(event, MatchEnded):
+                match = orchestrator.world.get_match_by_id(event.match_id)
+                if match and match.league == league_id:
+                    completed_matches.add(event.match_id)
+        
+        # Count goals per player
+        player_goals: dict = {}
+        player_assists: dict = {}
+        player_info: dict = {}
+        
+        for event in all_events:
+            event_match_id = getattr(event, 'match_id', None)
+            if event_match_id and event_match_id not in completed_matches:
+                continue
+            
+            if isinstance(event, Goal):
+                scorer = event.scorer
+                # Store player info if we haven't seen them yet
+                if scorer not in player_info:
+                    # Find player's team
+                    for team in orchestrator.world.teams.values():
+                        if team.league == league_id:
+                            for player in team.players:
+                                if player.name == scorer:
+                                    player_info[scorer] = {
+                                        "player_id": player.id,
+                                        "player_name": scorer,
+                                        "team_id": team.id,
+                                        "team_name": team.name,
+                                        "position": player.position.value
+                                    }
+                                    break
+                
+                # Count goal
+                player_goals[scorer] = player_goals.get(scorer, 0) + 1
+                
+                # Count assist if present
+                if hasattr(event, 'assist') and event.assist:
+                    assister = event.assist
+                    player_assists[assister] = player_assists.get(assister, 0) + 1
+                    
+                    # Store assister info if needed
+                    if assister not in player_info:
+                        for team in orchestrator.world.teams.values():
+                            if team.league == league_id:
+                                for player in team.players:
+                                    if player.name == assister:
+                                        player_info[assister] = {
+                                            "player_id": player.id,
+                                            "player_name": assister,
+                                            "team_id": team.id,
+                                            "team_name": team.name,
+                                            "position": player.position.value
+                                        }
+                                        break
+        
+        # Build scorers list
+        scorers = []
+        for player_name, goals in player_goals.items():
+            if player_name in player_info:
+                scorer_data = player_info[player_name].copy()
+                scorer_data["goals"] = goals
+                scorer_data["assists"] = player_assists.get(player_name, 0)
+                scorers.append(scorer_data)
+        
+        # Sort by goals (descending)
+        scorers.sort(key=lambda x: (x["goals"], x["assists"]), reverse=True)
+        
+        return {
+            "league_id": league_id,
+            "league_name": league.name,
+            "top_scorers": scorers[:limit]
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000, reload=True)

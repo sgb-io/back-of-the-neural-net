@@ -18,10 +18,10 @@ This document tracks features that are missing from Back of the Neural Net when 
 - ✅ Injuries during matches
 - ✅ Match minute progression (90 minutes)
 - ✅ Live event streaming
-- 🚧 Match statistics (limited implementation)
-- ❌ Possession tracking
-- ❌ Shot statistics (on target, off target, blocked)
-- ❌ Corner kicks
+- ✅ Match statistics (possession, shots, corners tracked)
+- ✅ Possession tracking
+- ✅ Shot statistics (on target, off target)
+- ✅ Corner kicks
 - ❌ Free kicks (direct and indirect)
 - ❌ Penalty kicks
 - ❌ Offsides
@@ -161,13 +161,13 @@ This document tracks features that are missing from Back of the Neural Net when 
 
 ### Financial Management
 - ✅ Club owners with wealth tracking
-- 🚧 Basic finances (contracts tracked)
+- ✅ Basic finances (contracts tracked, prize money, TV rights)
 - ❌ Transfer budgets
 - ❌ Wage budgets
-- ❌ Ticket sales revenue
+- ✅ Ticket sales revenue (matchday revenue calculated)
 - ❌ Merchandise revenue
-- ❌ Prize money
-- ❌ TV rights revenue
+- ✅ Prize money (based on league position)
+- ✅ TV rights revenue (based on league position and stadium)
 - ❌ Sponsorship deals
 - ❌ Stadium naming rights
 - ❌ Financial fair play rules
@@ -175,9 +175,9 @@ This document tracks features that are missing from Back of the Neural Net when 
 - ❌ Bank loans
 
 ### Infrastructure
-- ❌ Stadium information (capacity, facilities)
+- ✅ Stadium information (capacity, facilities tracked)
 - ❌ Stadium expansion/renovation
-- ❌ Training ground facilities
+- ✅ Training ground facilities (quality tracked)
 - ❌ Youth academy facilities
 - ❌ Medical facilities
 - ❌ Facility upgrades and costs
@@ -321,17 +321,17 @@ This document tracks features that are missing from Back of the Neural Net when 
 - ✅ League position
 - ✅ Points, wins, draws, losses
 - ✅ Goals for/against
-- 🚧 Basic team stats
-- ❌ Home/away records
+- ✅ Basic team stats
+- ✅ Home/away records (tracked with separate home/away W/D/L)
 - ❌ Winning/losing streaks
-- ❌ Clean sheets
+- ✅ Clean sheets
 - ❌ Form guide
 - ❌ Head-to-head records
 - ❌ Historical records
 
 ### League Statistics
 - ✅ League tables
-- ❌ Top scorers
+- ✅ Top scorers (API endpoint added)
 - ❌ Top assisters
 - ❌ Most clean sheets
 - ❌ Disciplinary records

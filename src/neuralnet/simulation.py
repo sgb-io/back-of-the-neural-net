@@ -5,6 +5,7 @@ from collections.abc import Generator
 
 from .entities import GameWorld, Match, Position, Team
 from .events import (
+    CornerKick,
     Goal,
     Injury,
     KickOff,
@@ -32,6 +33,15 @@ class MatchSimulator:
 
         # Track yellow cards per player in this match
         self._match_yellow_cards: dict[str, int] = {}
+        
+        # Track match statistics
+        self._home_shots = 0
+        self._away_shots = 0
+        self._home_shots_on_target = 0
+        self._away_shots_on_target = 0
+        self._home_corners = 0
+        self._away_corners = 0
+        self._possession_minutes = {"home": 0, "away": 0}
 
     def simulate(self) -> Generator[MatchEvent, None, None]:
         """Simulate a complete match, yielding events as they occur."""
@@ -52,6 +62,9 @@ class MatchSimulator:
         # Simulate 90 minutes of match time
         for minute in range(1, 91):
             self.match.minute = minute
+            
+            # Track possession for this minute based on team strength
+            self._track_possession_minute()
 
             # Check for events this minute
             events = self._simulate_minute()
@@ -59,15 +72,28 @@ class MatchSimulator:
 
         # Mark match as finished
         self.match.finished = True
+        
+        # Calculate final possession percentages
+        total_minutes = self._possession_minutes["home"] + self._possession_minutes["away"]
+        home_possession = int((self._possession_minutes["home"] / total_minutes) * 100) if total_minutes > 0 else 50
+        away_possession = 100 - home_possession
 
-        # Final match result
+        # Final match result with statistics
         yield MatchEnded(
             match_id=self.match.id,
             home_team=self.home_team.id,
             away_team=self.away_team.id,
             home_score=self.match.home_score,
             away_score=self.match.away_score,
-            duration_minutes=90
+            duration_minutes=90,
+            home_possession=home_possession,
+            away_possession=away_possession,
+            home_shots=self._home_shots,
+            away_shots=self._away_shots,
+            home_shots_on_target=self._home_shots_on_target,
+            away_shots_on_target=self._away_shots_on_target,
+            home_corners=self._home_corners,
+            away_corners=self._away_corners
         )
 
     def _simulate_minute(self) -> list[MatchEvent]:
@@ -80,6 +106,10 @@ class MatchSimulator:
             event = self._create_event(event_type)
             if event:
                 events.append(event)
+        
+        # Track shots that don't result in goals or other events (happens more frequently)
+        if self.rng.random() < 0.15:  # 15% chance per minute for a shot attempt
+            self._track_shot_attempt()
 
         return events
 
@@ -92,6 +122,7 @@ class MatchSimulator:
             ("red_card", 0.002),   # ~0.18 red cards per match
             ("substitution", 0.01), # Limited substitutions
             ("injury", 0.003),     # ~0.27 injuries per match
+            ("corner", 0.1),       # ~9 corners per match
         ]
 
         total_weight = sum(weight for _, weight in choices)
@@ -117,6 +148,8 @@ class MatchSimulator:
             return self._create_substitution_event()
         elif event_type == "injury":
             return self._create_injury_event()
+        elif event_type == "corner":
+            return self._create_corner_event()
 
         return None
 
@@ -130,9 +163,15 @@ class MatchSimulator:
         if self.rng.random() < (home_strength / total_strength):
             scoring_team = self.home_team
             self.match.home_score += 1
+            # Track shot on target (resulted in goal)
+            self._home_shots += 1
+            self._home_shots_on_target += 1
         else:
             scoring_team = self.away_team
             self.match.away_score += 1
+            # Track shot on target (resulted in goal)
+            self._away_shots += 1
+            self._away_shots_on_target += 1
 
         # Choose a random attacking player as scorer
         attackers = [
@@ -330,6 +369,57 @@ class MatchSimulator:
             total_strength += strength
 
         return total_strength / len(team.players)
+    
+    def _track_shot_attempt(self) -> None:
+        """Track a shot attempt that doesn't result in a notable event."""
+        home_strength = self._calculate_team_strength(self.home_team)
+        away_strength = self._calculate_team_strength(self.away_team)
+        total_strength = home_strength + away_strength
+        
+        if self.rng.random() < (home_strength / total_strength):
+            self._home_shots += 1
+            # 50% chance shot is on target
+            if self.rng.random() < 0.5:
+                self._home_shots_on_target += 1
+        else:
+            self._away_shots += 1
+            # 50% chance shot is on target
+            if self.rng.random() < 0.5:
+                self._away_shots_on_target += 1
+    
+    def _track_possession_minute(self) -> None:
+        """Track which team has possession this minute based on team strength."""
+        home_strength = self._calculate_team_strength(self.home_team)
+        away_strength = self._calculate_team_strength(self.away_team)
+        total_strength = home_strength + away_strength
+        
+        # Determine possession for this minute
+        if self.rng.random() < (home_strength / total_strength):
+            self._possession_minutes["home"] += 1
+        else:
+            self._possession_minutes["away"] += 1
+    
+    def _create_corner_event(self) -> CornerKick:
+        """Create a corner kick event."""
+        # Choose which team gets the corner based on attacking strength
+        home_strength = self._calculate_team_strength(self.home_team)
+        away_strength = self._calculate_team_strength(self.away_team)
+        total_strength = home_strength + away_strength
+        
+        if self.rng.random() < (home_strength / total_strength):
+            attacking_team = self.home_team
+            self._home_corners += 1
+        else:
+            attacking_team = self.away_team
+            self._away_corners += 1
+        
+        return CornerKick(
+            match_id=self.match.id,
+            minute=self.match.minute,
+            home_score=self.match.home_score,
+            away_score=self.match.away_score,
+            team=attacking_team.id
+        )
 
 
 class MatchEngine:
@@ -377,17 +467,29 @@ class MatchEngine:
         home_team.goals_against += match.away_score
         away_team.goals_for += match.away_score
         away_team.goals_against += match.home_score
+        
+        # Track clean sheets
+        if match.away_score == 0:
+            home_team.clean_sheets += 1
+        if match.home_score == 0:
+            away_team.clean_sheets += 1
 
-        # Update win/draw/loss records
+        # Update win/draw/loss records (overall and home/away)
         if match.home_score > match.away_score:
             home_team.wins += 1
+            home_team.home_wins += 1
             away_team.losses += 1
+            away_team.away_losses += 1
         elif match.away_score > match.home_score:
             away_team.wins += 1
+            away_team.away_wins += 1
             home_team.losses += 1
+            home_team.home_losses += 1
         else:
             home_team.draws += 1
+            home_team.home_draws += 1
             away_team.draws += 1
+            away_team.away_draws += 1
 
     def _update_player_form_after_match(self, events: list, match: Match) -> None:
         """Update player form based on match performance."""

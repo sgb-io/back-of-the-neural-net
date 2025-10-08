@@ -11,6 +11,13 @@ export interface TeamTableEntry {
   goals_against: number;
   goal_difference: number;
   points: number;
+  clean_sheets?: number;
+  home_wins?: number;
+  home_draws?: number;
+  home_losses?: number;
+  away_wins?: number;
+  away_draws?: number;
+  away_losses?: number;
 }
 
 export interface League {
@@ -73,6 +80,15 @@ export interface CompletedMatch {
   away_score: number;
   finished: boolean;
   is_home?: boolean; // For team-specific matches
+  // Match statistics
+  home_possession?: number;
+  away_possession?: number;
+  home_shots?: number;
+  away_shots?: number;
+  home_shots_on_target?: number;
+  away_shots_on_target?: number;
+  home_corners?: number;
+  away_corners?: number;
 }
 
 export interface Player {
@@ -161,6 +177,16 @@ export interface TeamDetail {
   goals_against: number;
   goal_difference: number;
   points: number;
+  clean_sheets: number;
+  // Home/Away records
+  home_wins: number;
+  home_draws: number;
+  home_losses: number;
+  home_points: number;
+  away_wins: number;
+  away_draws: number;
+  away_losses: number;
+  away_points: number;
   // Financial information
   balance: number;
   initial_balance: number;
@@ -348,6 +374,23 @@ export interface NewsLeague {
 
 export interface NewsResponse {
   news_by_league: Record<string, NewsLeague>;
+}
+
+// Top Scorers Types
+export interface TopScorer {
+  player_id: string;
+  player_name: string;
+  team_id: string;
+  team_name: string;
+  position: string;
+  goals: number;
+  assists: number;
+}
+
+export interface TopScorersResponse {
+  league_id: string;
+  league_name: string;
+  top_scorers: TopScorer[];
 }
 
 // API Response Types
