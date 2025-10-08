@@ -376,6 +376,23 @@ export interface NewsResponse {
   news_by_league: Record<string, NewsLeague>;
 }
 
+// Top Scorers Types
+export interface TopScorer {
+  player_id: string;
+  player_name: string;
+  team_id: string;
+  team_name: string;
+  position: string;
+  goals: number;
+  assists: number;
+}
+
+export interface TopScorersResponse {
+  league_id: string;
+  league_name: string;
+  top_scorers: TopScorer[];
+}
+
 // API Response Types
 export interface AdvanceResponse {
   status: 'matches_completed' | 'matchday_advanced';

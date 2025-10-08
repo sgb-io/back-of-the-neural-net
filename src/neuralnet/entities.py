@@ -1,6 +1,6 @@
 """Core game entities and domain models."""
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from enum import Enum
 from pydantic import BaseModel, Field
 
@@ -487,6 +487,34 @@ class GameWorld(BaseModel):
     def get_staff_for_team(self, team_id: str) -> List[StaffMember]:
         """Get all staff members for a specific team."""
         return [staff for staff in self.staff_members.values() if staff.team_id == team_id]
+    
+    def get_top_scorers(self, league_id: Optional[str] = None, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get top goal scorers, optionally filtered by league."""
+        # Collect all players with their team info
+        player_stats = []
+        for team in self.teams.values():
+            # Filter by league if specified
+            if league_id and team.league != league_id:
+                continue
+                
+            for player in team.players:
+                # We need to calculate goals from match events
+                # For now, we'll use a simple placeholder
+                # In a full implementation, this would query the event store
+                player_stats.append({
+                    "player_id": player.id,
+                    "player_name": player.name,
+                    "team_id": team.id,
+                    "team_name": team.name,
+                    "position": player.position.value,
+                    "goals": 0,  # Would be calculated from events
+                    "assists": 0,  # Would be calculated from events
+                })
+        
+        # Sort by goals (descending)
+        player_stats.sort(key=lambda x: x["goals"], reverse=True)
+        
+        return player_stats[:limit]
     
     def get_agent_for_player(self, player_id: str) -> Optional[PlayerAgent]:
         """Get the agent for a specific player."""
