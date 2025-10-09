@@ -404,6 +404,85 @@ def create_fantasy_player(name: str, position: Position) -> Player:
         attacking_work_rate = WorkRate.LOW
         defensive_work_rate = WorkRate.LOW
     
+    # Determine skill moves rating (1-5 stars)
+    # Distribution: 15% get 1 star, 30% get 2 stars, 35% get 3 stars, 15% get 4 stars, 5% get 5 stars
+    # Attacking players and wingers get better skill moves on average
+    skill_roll = player_rng.random()
+    if position in [Position.LW, Position.RW, Position.CAM, Position.ST]:
+        # Attacking players have better skill moves
+        if skill_roll < 0.05:
+            skill_moves = 1
+        elif skill_roll < 0.20:
+            skill_moves = 2
+        elif skill_roll < 0.55:
+            skill_moves = 3
+        elif skill_roll < 0.85:
+            skill_moves = 4
+        else:
+            skill_moves = 5
+    elif position in [Position.CB, Position.GK]:
+        # Defenders and goalkeepers have lower skill moves
+        if skill_roll < 0.30:
+            skill_moves = 1
+        elif skill_roll < 0.65:
+            skill_moves = 2
+        elif skill_roll < 0.90:
+            skill_moves = 3
+        elif skill_roll < 0.98:
+            skill_moves = 4
+        else:
+            skill_moves = 5
+    else:
+        # Regular distribution for midfielders and fullbacks
+        if skill_roll < 0.15:
+            skill_moves = 1
+        elif skill_roll < 0.45:
+            skill_moves = 2
+        elif skill_roll < 0.80:
+            skill_moves = 3
+        elif skill_roll < 0.95:
+            skill_moves = 4
+        else:
+            skill_moves = 5
+    
+    # Generate player traits based on attributes
+    from .entities import PlayerTrait
+    traits = []
+    
+    # Check for specific traits based on attributes
+    if base_stats["pace"] >= 85:
+        traits.append(PlayerTrait.SPEEDSTER)
+    if base_stats["shooting"] >= 85:
+        traits.append(PlayerTrait.CLINICAL_FINISHER)
+    if base_stats["passing"] >= 85:
+        traits.append(PlayerTrait.PLAYMAKER)
+    if base_stats["defending"] >= 85:
+        traits.append(PlayerTrait.WALL)
+    if base_stats["physicality"] >= 85:
+        traits.append(PlayerTrait.POWERHOUSE)
+    
+    # Check for skill-based traits
+    if skill_moves >= 4:
+        if PlayerTrait.TECHNICAL not in traits:
+            traits.append(PlayerTrait.TECHNICAL)
+    
+    # Check for work rate traits
+    if attacking_work_rate == WorkRate.HIGH and defensive_work_rate == WorkRate.HIGH:
+        traits.append(PlayerTrait.ENGINE)
+    
+    # Leadership trait for experienced players
+    if age >= 28 and reputation >= 60:
+        traits.append(PlayerTrait.LEADER)
+    
+    # Flair trait for highly skilled players
+    if skill_moves == 5 and overall_ability >= 70:
+        if PlayerTrait.FLAIR not in traits:
+            traits.append(PlayerTrait.FLAIR)
+    
+    # Injury prone trait (5% chance)
+    if player_rng.random() < 0.05:
+        traits.append(PlayerTrait.INJURY_PRONE)
+    
     # Calculate salary based on ability, age, and reputation
     base_salary = 15000  # £15k minimum
     ability_bonus = int(overall_ability * 1000)  # Up to £70k for 70+ rated players
@@ -432,8 +511,10 @@ def create_fantasy_player(name: str, position: Position) -> Player:
         salary=salary,
         preferred_foot=preferred_foot,
         weak_foot=weak_foot,
+        skill_moves=skill_moves,
         attacking_work_rate=attacking_work_rate,
         defensive_work_rate=defensive_work_rate,
+        traits=traits,
         **base_stats
     )
     

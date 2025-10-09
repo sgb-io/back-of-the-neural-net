@@ -1425,6 +1425,213 @@ async def get_match_player_ratings(match_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/leagues/{league_id}/most-clean-sheets")
+async def get_most_clean_sheets(league_id: str):
+    """Get teams with most clean sheets in a league."""
+    try:
+        if not orchestrator.world:
+            raise HTTPException(status_code=400, detail="World not initialized")
+        
+        league = orchestrator.world.get_league_by_id(league_id)
+        if not league:
+            raise HTTPException(status_code=404, detail=f"League {league_id} not found")
+        
+        # Get all teams in the league
+        teams_data = []
+        for team_id in league.teams:
+            team = orchestrator.world.get_team_by_id(team_id)
+            if team:
+                teams_data.append({
+                    "team_id": team.id,
+                    "team_name": team.name,
+                    "clean_sheets": team.clean_sheets,
+                    "matches_played": team.matches_played,
+                    "clean_sheet_percentage": (team.clean_sheets / team.matches_played * 100) if team.matches_played > 0 else 0
+                })
+        
+        # Sort by clean sheets (descending)
+        teams_data.sort(key=lambda x: x["clean_sheets"], reverse=True)
+        
+        return {
+            "league_id": league_id,
+            "league_name": league.name,
+            "teams": teams_data
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/leagues/{league_id}/disciplinary-records")
+async def get_disciplinary_records(league_id: str):
+    """Get disciplinary records (yellow and red cards) for teams and players in a league."""
+    try:
+        if not orchestrator.world:
+            raise HTTPException(status_code=400, detail="World not initialized")
+        
+        league = orchestrator.world.get_league_by_id(league_id)
+        if not league:
+            raise HTTPException(status_code=404, detail=f"League {league_id} not found")
+        
+        # Get all teams in the league and their players
+        teams_data = []
+        all_players = []
+        
+        for team_id in league.teams:
+            team = orchestrator.world.get_team_by_id(team_id)
+            if team:
+                team_yellows = sum(p.yellow_cards for p in team.players)
+                team_reds = sum(p.red_cards for p in team.players)
+                teams_data.append({
+                    "team_id": team.id,
+                    "team_name": team.name,
+                    "yellow_cards": team_yellows,
+                    "red_cards": team_reds,
+                    "total_cards": team_yellows + team_reds
+                })
+                
+                # Collect player data
+                for player in team.players:
+                    if player.yellow_cards > 0 or player.red_cards > 0:
+                        all_players.append({
+                            "player_id": player.id,
+                            "player_name": player.name,
+                            "team_id": team.id,
+                            "team_name": team.name,
+                            "position": player.position.value,
+                            "yellow_cards": player.yellow_cards,
+                            "red_cards": player.red_cards,
+                            "total_cards": player.yellow_cards + player.red_cards
+                        })
+        
+        # Sort teams by total cards (descending)
+        teams_data.sort(key=lambda x: x["total_cards"], reverse=True)
+        
+        # Sort players by total cards (descending)
+        all_players.sort(key=lambda x: x["total_cards"], reverse=True)
+        
+        return {
+            "league_id": league_id,
+            "league_name": league.name,
+            "teams": teams_data,
+            "players": all_players[:50]  # Top 50 most carded players
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/leagues/{league_id}/history")
+async def get_league_history(league_id: str):
+    """Get historical data for a league including past champions."""
+    try:
+        if not orchestrator.world:
+            raise HTTPException(status_code=400, detail="World not initialized")
+        
+        league = orchestrator.world.get_league_by_id(league_id)
+        if not league:
+            raise HTTPException(status_code=404, detail=f"League {league_id} not found")
+        
+        # Get champions history
+        champions_history = []
+        for season, champion_id in league.champions_by_season.items():
+            team = orchestrator.world.get_team_by_id(champion_id)
+            if team:
+                champions_history.append({
+                    "season": season,
+                    "team_id": champion_id,
+                    "team_name": team.name
+                })
+        
+        # Sort by season (descending)
+        champions_history.sort(key=lambda x: x["season"], reverse=True)
+        
+        # Get top scorers history
+        top_scorers_history = []
+        for season, scorer_data in league.top_scorers_by_season.items():
+            player_id = scorer_data.get("player_id")
+            player = orchestrator.world.get_player_by_id(player_id)
+            team = orchestrator.world.get_team_by_id(scorer_data.get("team_id", ""))
+            
+            if player:
+                top_scorers_history.append({
+                    "season": season,
+                    "player_id": player_id,
+                    "player_name": player.name,
+                    "team_id": scorer_data.get("team_id"),
+                    "team_name": team.name if team else "Unknown",
+                    "goals": scorer_data.get("goals", 0)
+                })
+        
+        # Sort by season (descending)
+        top_scorers_history.sort(key=lambda x: x["season"], reverse=True)
+        
+        return {
+            "league_id": league_id,
+            "league_name": league.name,
+            "current_season": league.season,
+            "champions": champions_history,
+            "top_scorers": top_scorers_history
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/players/{player_id}/season-stats")
+async def get_player_season_stats(player_id: str, season: int = None):
+    """Get season statistics for a player."""
+    try:
+        if not orchestrator.world:
+            raise HTTPException(status_code=400, detail="World not initialized")
+        
+        player = orchestrator.world.get_player_by_id(player_id)
+        if not player:
+            raise HTTPException(status_code=404, detail=f"Player {player_id} not found")
+        
+        # If season is not specified, use current season
+        if season is None:
+            season = orchestrator.world.season
+        
+        # Get season stats
+        season_stats = player.season_stats.get(season)
+        
+        if not season_stats:
+            # Return default stats if no data for this season
+            return {
+                "player_id": player_id,
+                "player_name": player.name,
+                "season": season,
+                "appearances": 0,
+                "goals": 0,
+                "assists": 0,
+                "yellow_cards": 0,
+                "red_cards": 0,
+                "minutes_played": 0,
+                "average_rating": 0.0
+            }
+        
+        return {
+            "player_id": player_id,
+            "player_name": player.name,
+            "season": season,
+            "appearances": season_stats.appearances,
+            "goals": season_stats.goals,
+            "assists": season_stats.assists,
+            "yellow_cards": season_stats.yellow_cards,
+            "red_cards": season_stats.red_cards,
+            "minutes_played": season_stats.minutes_played,
+            "average_rating": season_stats.average_rating
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000, reload=True)

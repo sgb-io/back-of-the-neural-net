@@ -399,3 +399,94 @@ export interface AdvanceResponse {
   matches_played?: number;
   events?: MatchEvent[];
 }
+
+// Player Season Statistics
+export interface PlayerSeasonStats {
+  season: number;
+  appearances: number;
+  goals: number;
+  assists: number;
+  yellow_cards: number;
+  red_cards: number;
+  minutes_played: number;
+  average_rating: number;
+}
+
+// Player Traits
+export type PlayerTrait = 
+  | "Speedster"
+  | "Clinical Finisher"
+  | "Playmaker"
+  | "Wall"
+  | "Powerhouse"
+  | "Technical"
+  | "Leader"
+  | "Injury Prone"
+  | "Flair"
+  | "Engine";
+
+// League History
+export interface ChampionRecord {
+  season: number;
+  team_id: string;
+  team_name: string;
+}
+
+export interface TopScorerRecord {
+  season: number;
+  player_id: string;
+  player_name: string;
+  team_id: string;
+  team_name: string;
+  goals: number;
+}
+
+export interface LeagueHistory {
+  league_id: string;
+  league_name: string;
+  current_season: number;
+  champions: ChampionRecord[];
+  top_scorers: TopScorerRecord[];
+}
+
+// Clean Sheets
+export interface TeamCleanSheets {
+  team_id: string;
+  team_name: string;
+  clean_sheets: number;
+  matches_played: number;
+  clean_sheet_percentage: number;
+}
+
+export interface MostCleanSheetsResponse {
+  league_id: string;
+  league_name: string;
+  teams: TeamCleanSheets[];
+}
+
+// Disciplinary Records
+export interface TeamDisciplinaryRecord {
+  team_id: string;
+  team_name: string;
+  yellow_cards: number;
+  red_cards: number;
+  total_cards: number;
+}
+
+export interface PlayerDisciplinaryRecord {
+  player_id: string;
+  player_name: string;
+  team_id: string;
+  team_name: string;
+  position: string;
+  yellow_cards: number;
+  red_cards: number;
+  total_cards: number;
+}
+
+export interface DisciplinaryRecordsResponse {
+  league_id: string;
+  league_name: string;
+  teams: TeamDisciplinaryRecord[];
+  players: PlayerDisciplinaryRecord[];
+}

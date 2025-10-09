@@ -196,6 +196,19 @@ class AgentNegotiation(Event):
     outcome: str  # "successful", "ongoing", "failed", etc.
 
 
+class SeasonEnded(Event):
+    """Event fired when a season concludes."""
+    season: int
+    league_id: str
+    champion_team_id: str
+    top_scorer_player_id: str
+    top_scorer_goals: int
+    top_assister_player_id: str
+    top_assister_assists: int
+    most_clean_sheets_team_id: str
+    most_clean_sheets_count: int
+
+
 class EventStore:
     """SQLite-based event store for the game world."""
     

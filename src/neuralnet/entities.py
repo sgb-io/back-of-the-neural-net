@@ -5,6 +5,18 @@ from enum import Enum
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class PlayerSeasonStats(BaseModel):
+    """Player statistics for a specific season."""
+    season: int
+    appearances: int = Field(default=0, ge=0, description="Total matches played")
+    goals: int = Field(default=0, ge=0, description="Goals scored")
+    assists: int = Field(default=0, ge=0, description="Assists provided")
+    yellow_cards: int = Field(default=0, ge=0, description="Yellow cards received")
+    red_cards: int = Field(default=0, ge=0, description="Red cards received")
+    minutes_played: int = Field(default=0, ge=0, description="Total minutes on the pitch")
+    average_rating: float = Field(default=0.0, ge=0.0, le=10.0, description="Average match rating")
+
+
 class Position(str, Enum):
     """Player positions."""
     GK = "GK"  # Goalkeeper
@@ -34,6 +46,20 @@ class WorkRate(str, Enum):
     HIGH = "High"
 
 
+class PlayerTrait(str, Enum):
+    """Player traits and specialties."""
+    SPEEDSTER = "Speedster"  # Exceptional pace
+    CLINICAL_FINISHER = "Clinical Finisher"  # Excellent shooting accuracy
+    PLAYMAKER = "Playmaker"  # Exceptional passing and vision
+    WALL = "Wall"  # Strong defensive presence
+    POWERHOUSE = "Powerhouse"  # Physical dominance
+    TECHNICAL = "Technical"  # Excellent ball control and dribbling
+    LEADER = "Leader"  # Natural leadership qualities
+    INJURY_PRONE = "Injury Prone"  # More susceptible to injuries
+    FLAIR = "Flair"  # Creative and unpredictable
+    ENGINE = "Engine"  # High stamina and work rate
+
+
 class Player(BaseModel):
     """A football player."""
     model_config = ConfigDict(validate_assignment=True)
@@ -52,8 +78,10 @@ class Player(BaseModel):
     # Player characteristics
     preferred_foot: PreferredFoot = Field(default=PreferredFoot.RIGHT, description="Player's preferred foot")
     weak_foot: int = Field(default=3, ge=1, le=5, description="Weak foot ability (1-5 stars)")
+    skill_moves: int = Field(default=3, ge=1, le=5, description="Skill moves rating (1-5 stars)")
     attacking_work_rate: WorkRate = Field(default=WorkRate.MEDIUM, description="Attacking work rate")
     defensive_work_rate: WorkRate = Field(default=WorkRate.MEDIUM, description="Defensive work rate")
+    traits: List["PlayerTrait"] = Field(default_factory=list, description="Player traits and specialties")
     
     # Soft attributes (LLM-driven)
     form: int = Field(default=50, ge=1, le=100)  # Current form
@@ -76,6 +104,9 @@ class Player(BaseModel):
     contract_years_remaining: int = Field(default=2, ge=0, description="Years remaining on current contract")
     salary: int = Field(default=25000, ge=0, description="Annual salary")
     market_value: int = Field(default=100000, ge=0, description="Estimated market value")
+    
+    # Career statistics by season
+    season_stats: Dict[int, "PlayerSeasonStats"] = Field(default_factory=dict, description="Statistics by season")
     
     @property
     def base_attributes(self) -> Dict[str, int]:
@@ -337,6 +368,10 @@ class League(BaseModel):
     season: int
     current_matchday: int = Field(default=1, ge=1)
     total_matchdays: int = Field(default=38, ge=1)  # Standard league format
+    
+    # Historical records
+    champions_by_season: Dict[int, str] = Field(default_factory=dict, description="Season -> Champion team ID")
+    top_scorers_by_season: Dict[int, Dict[str, Any]] = Field(default_factory=dict, description="Season -> {player_id, goals, team_id}")
     
     def is_season_complete(self) -> bool:
         """Check if the current season is complete."""
