@@ -51,6 +51,7 @@ class Player(BaseModel):
     
     # Player characteristics
     preferred_foot: PreferredFoot = Field(default=PreferredFoot.RIGHT, description="Player's preferred foot")
+    weak_foot: int = Field(default=3, ge=1, le=5, description="Weak foot ability (1-5 stars)")
     attacking_work_rate: WorkRate = Field(default=WorkRate.MEDIUM, description="Attacking work rate")
     defensive_work_rate: WorkRate = Field(default=WorkRate.MEDIUM, description="Defensive work rate")
     
@@ -225,6 +226,9 @@ class Team(BaseModel):
     
     # Form guide (last 5 matches)
     recent_form: List[str] = Field(default_factory=list, description="Last 5 match results (W/D/L)")
+    
+    # Head-to-head records: {opponent_team_id: {"W": wins, "D": draws, "L": losses}}
+    head_to_head: Dict[str, Dict[str, int]] = Field(default_factory=dict, description="Win/Draw/Loss record against each opponent")
     
     @property
     def points(self) -> int:

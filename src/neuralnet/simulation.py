@@ -7,6 +7,7 @@ from .entities import GameWorld, Match, Player, Position, Team
 from .events import (
     CornerKick,
     Foul,
+    FreeKick,
     Goal,
     Injury,
     KickOff,
@@ -50,6 +51,8 @@ class MatchSimulator:
         self._away_penalties = 0
         self._home_offsides = 0
         self._away_offsides = 0
+        self._home_free_kicks = 0
+        self._away_free_kicks = 0
         self._possession_minutes = {"home": 0, "away": 0}
         self._commentary: list[str] = []
         
@@ -90,6 +93,9 @@ class MatchSimulator:
         total_minutes = self._possession_minutes["home"] + self._possession_minutes["away"]
         home_possession = int((self._possession_minutes["home"] / total_minutes) * 100) if total_minutes > 0 else 50
         away_possession = 100 - home_possession
+        
+        # Calculate player ratings for the match
+        player_ratings = self._calculate_player_ratings()
 
         # Final match result with statistics
         yield MatchEnded(
@@ -113,7 +119,10 @@ class MatchSimulator:
             away_penalties=self._away_penalties,
             home_offsides=self._home_offsides,
             away_offsides=self._away_offsides,
-            commentary=self._commentary if self._commentary else None
+            home_free_kicks=self._home_free_kicks,
+            away_free_kicks=self._away_free_kicks,
+            commentary=self._commentary if self._commentary else None,
+            player_ratings=player_ratings
         )
 
     def _simulate_minute(self) -> list[MatchEvent]:
@@ -155,6 +164,7 @@ class MatchSimulator:
             ("foul", 0.2),         # ~18 fouls per match
             ("penalty", 0.001),    # ~0.09 penalties per match (rare)
             ("offside", 0.05),     # ~4.5 offsides per match
+            ("free_kick", 0.15),   # ~13.5 free kicks per match
         ]
 
         total_weight = sum(weight for _, weight in choices)
@@ -188,6 +198,8 @@ class MatchSimulator:
             return self._create_penalty_event()
         elif event_type == "offside":
             return self._create_offside_event()
+        elif event_type == "free_kick":
+            return self._create_free_kick_event()
 
         return None
 
@@ -609,6 +621,12 @@ class MatchSimulator:
         elif isinstance(event, Offside):
             team_name = self.home_team.name if event.team == self.home_team.id else self.away_team.name
             self._commentary.append(f"{minute}' - Offside flag raised against {event.player} of {team_name}")
+        
+        elif isinstance(event, FreeKick):
+            team_name = self.home_team.name if event.team == self.home_team.id else self.away_team.name
+            fk_type = event.free_kick_type.capitalize()
+            location_desc = "in a dangerous position" if event.location == "dangerous" else "from distance"
+            self._commentary.append(f"{minute}' - {fk_type} free kick awarded to {team_name} {location_desc}")
 
 
     def _create_offside_event(self) -> Offside:
@@ -645,6 +663,71 @@ class MatchSimulator:
             player=player.name,
             team=offside_team.id
         )
+    
+    def _create_free_kick_event(self) -> FreeKick:
+        """Create a free kick event."""
+        # Choose which team receives the free kick (inverse of fouls - attacking team gets FK)
+        home_strength = self._calculate_team_strength(self.home_team)
+        away_strength = self._calculate_team_strength(self.away_team)
+        total_strength = home_strength + away_strength
+        
+        if self.rng.random() < (home_strength / total_strength):
+            fk_team = self.home_team
+            self._home_free_kicks += 1
+        else:
+            fk_team = self.away_team
+            self._away_free_kicks += 1
+        
+        # Determine if direct or indirect (80% direct, 20% indirect)
+        free_kick_type = "direct" if self.rng.random() < 0.8 else "indirect"
+        
+        # Determine location (30% dangerous/near box, 70% safe/midfield)
+        location = "dangerous" if self.rng.random() < 0.3 else "safe"
+        
+        return FreeKick(
+            match_id=self.match.id,
+            minute=self.match.minute,
+            home_score=self.match.home_score,
+            away_score=self.match.away_score,
+            team=fk_team.id,
+            free_kick_type=free_kick_type,
+            location=location
+        )
+    
+    def _calculate_player_ratings(self) -> dict[str, float]:
+        """Calculate match ratings for all players (1-10 scale)."""
+        ratings = {}
+        
+        # Rate all players who participated
+        for team in [self.home_team, self.away_team]:
+            for player in team.players[:11]:  # Starting 11
+                # Base rating: 6.0 (average performance)
+                base_rating = 6.0
+                
+                # Modify based on player form and fitness
+                form_modifier = (player.form - 50) * 0.02  # -1.0 to +1.0
+                fitness_modifier = (player.fitness - 100) * 0.01  # Up to -1.0 for low fitness
+                
+                # Goalkeepers get bonus for clean sheet
+                position_modifier = 0.0
+                is_home = team.id == self.home_team.id
+                if player.position == Position.GK:
+                    if is_home and self.match.away_score == 0:
+                        position_modifier += 0.5
+                    elif not is_home and self.match.home_score == 0:
+                        position_modifier += 0.5
+                    # Penalty for conceding many goals
+                    goals_conceded = self.match.away_score if is_home else self.match.home_score
+                    if goals_conceded >= 3:
+                        position_modifier -= 0.5
+                
+                # Calculate final rating (clamped to 1-10)
+                rating = base_rating + form_modifier + fitness_modifier + position_modifier
+                rating = max(1.0, min(10.0, rating))
+                
+                ratings[player.id] = round(rating, 1)
+        
+        return ratings
 
 
 class MatchEngine:
@@ -736,6 +819,17 @@ class MatchEngine:
         away_team.recent_form.append(away_result)
         if len(away_team.recent_form) > 5:
             away_team.recent_form.pop(0)
+        
+        # Update head-to-head records
+        self._update_head_to_head(home_team, away_team, home_result)
+        self._update_head_to_head(away_team, home_team, away_result)
+    
+    def _update_head_to_head(self, team: Team, opponent: Team, result: str) -> None:
+        """Update head-to-head record for a team against an opponent."""
+        if opponent.id not in team.head_to_head:
+            team.head_to_head[opponent.id] = {"W": 0, "D": 0, "L": 0}
+        
+        team.head_to_head[opponent.id][result] += 1
     
     def _update_streak(self, team: Team, result: str) -> None:
         """Update team's current and longest streaks."""

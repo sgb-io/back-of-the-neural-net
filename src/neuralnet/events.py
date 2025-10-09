@@ -117,6 +117,13 @@ class PenaltyAwarded(MatchEvent):
     reason: str  # Description of why penalty was awarded
 
 
+class FreeKick(MatchEvent):
+    """Free kick awarded event."""
+    team: str
+    free_kick_type: str  # "direct" or "indirect"
+    location: str  # "dangerous" (near box) or "safe" (far from goal)
+
+
 class Injury(MatchEvent):
     """Player injury event."""
     player: str
@@ -149,7 +156,10 @@ class MatchEnded(Event):
     away_penalties: Optional[int] = None  # Penalty kicks taken
     home_offsides: Optional[int] = None  # Offside calls
     away_offsides: Optional[int] = None  # Offside calls
+    home_free_kicks: Optional[int] = None  # Free kicks awarded
+    away_free_kicks: Optional[int] = None  # Free kicks awarded
     commentary: Optional[List[str]] = None  # Match commentary lines
+    player_ratings: Optional[Dict[str, float]] = None  # Player ID -> rating (1-10)
 
 
 class SoftStateUpdated(Event):
@@ -370,6 +380,10 @@ class EventStore:
             "RedCard": RedCard,
             "Substitution": Substitution,
             "CornerKick": CornerKick,
+            "Foul": Foul,
+            "Offside": Offside,
+            "PenaltyAwarded": PenaltyAwarded,
+            "FreeKick": FreeKick,
             "Injury": Injury,
             "MatchEnded": MatchEnded,
             "SoftStateUpdated": SoftStateUpdated,
