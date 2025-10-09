@@ -89,6 +89,10 @@ export interface CompletedMatch {
   away_shots_on_target?: number;
   home_corners?: number;
   away_corners?: number;
+  // Match atmosphere
+  weather?: string; // "Sunny", "Cloudy", "Rainy", "Snowy", "Windy", "Foggy"
+  attendance?: number;
+  atmosphere_rating?: number;
 }
 
 export interface Player {
@@ -112,6 +116,24 @@ export interface Player {
   contract_years_remaining: number;
   salary: number;
   market_value: number;
+  potential?: number; // Maximum potential rating
+  injury_history?: InjuryRecord[];
+  awards?: PlayerAward[];
+}
+
+export interface InjuryRecord {
+  injury_type: string; // "Hamstring", "Groin", "Ankle", "Knee", "Shoulder", "Concussion", "Muscle", "Broken Bone"
+  occurred_date: string; // ISO date string
+  weeks_out: number;
+  season: number;
+  match_id?: string;
+}
+
+export interface PlayerAward {
+  award_type: string; // e.g., "Player of the Season", "Golden Boot", "Best Defender"
+  season: number;
+  league: string;
+  details?: string;
 }
 
 export interface ClubOwner {
@@ -490,3 +512,27 @@ export interface DisciplinaryRecordsResponse {
   teams: TeamDisciplinaryRecord[];
   players: PlayerDisciplinaryRecord[];
 }
+
+export interface DefenseRecord {
+  team_id: string;
+  team_name: string;
+  goals_conceded: number;
+  matches_played: number;
+  average_per_game: number;
+  clean_sheets: number;
+}
+
+export interface BestDefenseResponse {
+  league_id: string;
+  league_name: string;
+  season: number;
+  best_defenses: DefenseRecord[];
+}
+
+export interface WorstDefenseResponse {
+  league_id: string;
+  league_name: string;
+  season: number;
+  worst_defenses: DefenseRecord[];
+}
+

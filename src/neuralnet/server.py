@@ -1632,6 +1632,90 @@ async def get_player_season_stats(player_id: str, season: int = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/leagues/{league_id}/best-defense")
+async def get_best_defense(league_id: str):
+    """Get teams with the best defense (fewest goals conceded)."""
+    try:
+        if not orchestrator.world:
+            raise HTTPException(status_code=400, detail="World not initialized")
+        
+        league = orchestrator.world.get_league_by_id(league_id)
+        if not league:
+            raise HTTPException(status_code=404, detail=f"League {league_id} not found")
+        
+        # Get all teams in the league
+        teams_defense = []
+        for team_id in league.teams:
+            team = orchestrator.world.get_team_by_id(team_id)
+            if team and team.matches_played > 0:
+                goals_conceded = team.goals_against
+                avg_conceded = goals_conceded / team.matches_played
+                teams_defense.append({
+                    "team_id": team_id,
+                    "team_name": team.name,
+                    "goals_conceded": goals_conceded,
+                    "matches_played": team.matches_played,
+                    "average_per_game": round(avg_conceded, 2),
+                    "clean_sheets": team.clean_sheets
+                })
+        
+        # Sort by fewest goals conceded, then most clean sheets
+        teams_defense.sort(key=lambda x: (x["goals_conceded"], -x["clean_sheets"]))
+        
+        return {
+            "league_id": league_id,
+            "league_name": league.name,
+            "season": league.season,
+            "best_defenses": teams_defense
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/leagues/{league_id}/worst-defense")
+async def get_worst_defense(league_id: str):
+    """Get teams with the worst defense (most goals conceded)."""
+    try:
+        if not orchestrator.world:
+            raise HTTPException(status_code=400, detail="World not initialized")
+        
+        league = orchestrator.world.get_league_by_id(league_id)
+        if not league:
+            raise HTTPException(status_code=404, detail=f"League {league_id} not found")
+        
+        # Get all teams in the league
+        teams_defense = []
+        for team_id in league.teams:
+            team = orchestrator.world.get_team_by_id(team_id)
+            if team and team.matches_played > 0:
+                goals_conceded = team.goals_against
+                avg_conceded = goals_conceded / team.matches_played
+                teams_defense.append({
+                    "team_id": team_id,
+                    "team_name": team.name,
+                    "goals_conceded": goals_conceded,
+                    "matches_played": team.matches_played,
+                    "average_per_game": round(avg_conceded, 2),
+                    "clean_sheets": team.clean_sheets
+                })
+        
+        # Sort by most goals conceded
+        teams_defense.sort(key=lambda x: (-x["goals_conceded"], x["clean_sheets"]))
+        
+        return {
+            "league_id": league_id,
+            "league_name": league.name,
+            "season": league.season,
+            "worst_defenses": teams_defense
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000, reload=True)

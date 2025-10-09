@@ -1,13 +1,14 @@
 """Main game orchestrator that manages the simulation loop."""
 
 import asyncio
+import random
 import uuid
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
 
 from .config import get_config, Config
 from .data import create_sample_world
-from .entities import GameWorld, League, Match
+from .entities import GameWorld, League, Match, Weather
 from .events import EventStore, MatchEnded, MatchScheduled, MatchStarted, SoftStateUpdated, WorldInitialized, MediaStoryPublished
 from .llm import BrainOrchestrator, MockLLMProvider, MediaStory
 from .llm_mcp import MockToolsLLMProvider, ToolsLLMProvider
@@ -140,13 +141,74 @@ class GameOrchestrator:
                 
                 # Create match
                 match_id = str(uuid.uuid4())
+                
+                # Generate deterministic weather and attendance
+                home_team = self.world.get_team_by_id(home_team_id)
+                away_team = self.world.get_team_by_id(away_team_id)
+                
+                # Use match_id as seed for deterministic weather
+                match_rng = random.Random(hash(match_id) % (2**31))
+                
+                # Weather distribution: 30% Sunny, 25% Cloudy, 20% Rainy, 10% Windy, 10% Foggy, 5% Snowy
+                weather_roll = match_rng.random()
+                if weather_roll < 0.30:
+                    weather = Weather.SUNNY
+                elif weather_roll < 0.55:
+                    weather = Weather.CLOUDY
+                elif weather_roll < 0.75:
+                    weather = Weather.RAINY
+                elif weather_roll < 0.85:
+                    weather = Weather.WINDY
+                elif weather_roll < 0.95:
+                    weather = Weather.FOGGY
+                else:
+                    weather = Weather.SNOWY
+                
+                # Calculate attendance based on stadium capacity, reputation, and match importance
+                if home_team:
+                    base_attendance = int(home_team.stadium_capacity * 0.75)  # 75% base attendance
+                    
+                    # Reputation modifier (higher reputation = better attendance)
+                    rep_modifier = 1.0 + (home_team.reputation - 50) / 100.0  # 0.5x to 1.5x
+                    
+                    # Weather modifier (bad weather = lower attendance)
+                    weather_modifier = 1.0
+                    if weather == Weather.RAINY:
+                        weather_modifier = 0.85
+                    elif weather == Weather.SNOWY:
+                        weather_modifier = 0.70
+                    elif weather == Weather.FOGGY:
+                        weather_modifier = 0.90
+                    elif weather == Weather.SUNNY:
+                        weather_modifier = 1.10
+                    
+                    # Random variation (±10%)
+                    random_modifier = 0.90 + (match_rng.random() * 0.20)
+                    
+                    attendance = int(base_attendance * rep_modifier * weather_modifier * random_modifier)
+                    attendance = max(1000, min(attendance, home_team.stadium_capacity))
+                    
+                    # Calculate atmosphere rating based on attendance ratio
+                    attendance_ratio = attendance / home_team.stadium_capacity if home_team.stadium_capacity > 0 else 0
+                    atmosphere_rating = int(30 + (attendance_ratio * 60))  # 30-90 range
+                    
+                    # Boost atmosphere for derbies or big matches (if away team is also reputable)
+                    if away_team and away_team.reputation >= 60 and home_team.reputation >= 60:
+                        atmosphere_rating = min(100, atmosphere_rating + 10)
+                else:
+                    attendance = 15000
+                    atmosphere_rating = 50
+                
                 match = Match(
                     id=match_id,
                     home_team_id=home_team_id,
                     away_team_id=away_team_id,
                     league=league.id,
                     matchday=matchday,
-                    season=league.season
+                    season=league.season,
+                    weather=weather,
+                    attendance=attendance,
+                    atmosphere_rating=atmosphere_rating
                 )
                 
                 self.world.matches[match_id] = match
