@@ -28,9 +28,9 @@ This document tracks features that are missing from Back of the Neural Net when 
 - ✅ Fouls and foul statistics
 - ✅ Match commentary/text ticker
 - ❌ Extra time and penalty shootouts
-- ❌ Weather conditions affecting match
+- ✅ Weather conditions affecting match
 - ❌ Pitch conditions
-- ❌ Crowd attendance and atmosphere
+- ✅ Crowd attendance and atmosphere
 - 🚫 2D/3D match visualization
 
 ### Competition Structure
@@ -69,13 +69,13 @@ This document tracks features that are missing from Back of the Neural Net when 
 - ✅ Skill moves rating
 - ✅ Work rate (attacking/defensive)
 - ✅ Player traits and specialties
-- ❌ Hidden attributes (consistency, big match temperament, etc.)
-- ❌ Detailed injury history
+- ✅ Hidden attributes (consistency, big match temperament, etc.)
+- ✅ Detailed injury history
 - ❌ Player media handling rating
-- ❌ Player potential rating (for youth development)
+- ✅ Player potential rating (for youth development)
 - ❌ International caps and goals
 - ✅ Career statistics (goals, assists, appearances by season)
-- ❌ Player awards and achievements
+- ✅ Player awards and achievements
 - ❌ Preferred positions and versatility ratings
 
 ### Squad Operations
@@ -335,7 +335,7 @@ This document tracks features that are missing from Back of the Neural Net when 
 - ✅ Top assisters
 - ✅ Most clean sheets
 - ✅ Disciplinary records
-- ❌ Best/worst defense
+- ✅ Best/worst defense
 - ✅ Historical champions
 
 ---

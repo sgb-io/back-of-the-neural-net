@@ -60,6 +60,45 @@ class PlayerTrait(str, Enum):
     ENGINE = "Engine"  # High stamina and work rate
 
 
+class Weather(str, Enum):
+    """Weather conditions for matches."""
+    SUNNY = "Sunny"
+    CLOUDY = "Cloudy"
+    RAINY = "Rainy"
+    SNOWY = "Snowy"
+    WINDY = "Windy"
+    FOGGY = "Foggy"
+
+
+class InjuryType(str, Enum):
+    """Types of injuries that can occur."""
+    HAMSTRING = "Hamstring"
+    GROIN = "Groin"
+    ANKLE = "Ankle"
+    KNEE = "Knee"
+    SHOULDER = "Shoulder"
+    CONCUSSION = "Concussion"
+    MUSCLE = "Muscle"
+    BROKEN_BONE = "Broken Bone"
+
+
+class InjuryRecord(BaseModel):
+    """Record of a player injury."""
+    injury_type: InjuryType
+    occurred_date: str  # ISO date string
+    weeks_out: int = Field(ge=0, description="Weeks player was unavailable")
+    season: int
+    match_id: Optional[str] = None
+
+
+class PlayerAward(BaseModel):
+    """Award received by a player."""
+    award_type: str  # e.g., "Player of the Season", "Golden Boot", "Best Defender"
+    season: int
+    league: str
+    details: Optional[str] = None
+
+
 class Player(BaseModel):
     """A football player."""
     model_config = ConfigDict(validate_assignment=True)
@@ -107,6 +146,13 @@ class Player(BaseModel):
     
     # Career statistics by season
     season_stats: Dict[int, "PlayerSeasonStats"] = Field(default_factory=dict, description="Statistics by season")
+    
+    # Potential rating (for development/youth)
+    potential: int = Field(default=75, ge=1, le=100, description="Maximum potential rating the player can reach")
+    
+    # Career records
+    injury_history: List["InjuryRecord"] = Field(default_factory=list, description="Historical record of injuries")
+    awards: List["PlayerAward"] = Field(default_factory=list, description="Awards and achievements")
     
     @property
     def base_attributes(self) -> Dict[str, int]:
@@ -358,6 +404,11 @@ class Match(BaseModel):
     
     # Match metadata
     seed: Optional[int] = None  # For deterministic simulation
+    
+    # Match atmosphere
+    weather: "Weather" = Field(default=Weather.CLOUDY, description="Weather conditions during the match")
+    attendance: int = Field(default=0, ge=0, description="Number of fans attending")
+    atmosphere_rating: int = Field(default=50, ge=1, le=100, description="Stadium atmosphere quality")
 
 
 class League(BaseModel):

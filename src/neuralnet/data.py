@@ -3,7 +3,7 @@
 import uuid
 from typing import Dict
 
-from .entities import GameWorld, League, Player, Position, Team, ClubOwner, MediaOutlet, PlayerAgent, StaffMember, Rivalry, PreferredFoot, WorkRate
+from .entities import GameWorld, League, Player, Position, Team, ClubOwner, MediaOutlet, PlayerAgent, StaffMember, Rivalry, PreferredFoot, WorkRate, Weather, InjuryType, InjuryRecord, PlayerAward
 
 
 def create_sample_world() -> GameWorld:
@@ -496,6 +496,28 @@ def create_fantasy_player(name: str, position: Position) -> Player:
     
     salary = int((base_salary + ability_bonus + reputation_bonus) * age_factor)
     
+    # Calculate potential rating
+    # Young players have higher potential than their current rating
+    # Peak age players are at or near their potential
+    # Older players are at their max potential (current rating is potential)
+    current_rating = int(overall_ability)
+    if age < 23:
+        # Young players: potential is 10-25 points higher than current
+        potential = current_rating + player_rng.randint(10, 25)
+    elif age < peak_age:
+        # Pre-peak players: potential is 5-15 points higher
+        potential = current_rating + player_rng.randint(5, 15)
+    elif age <= peak_age + 2:
+        # Peak age players: at or very close to potential
+        potential = current_rating + player_rng.randint(0, 5)
+    else:
+        # Post-peak players: current rating is their potential (they've peaked)
+        # Set potential equal to current or slightly higher (1-2 points max)
+        potential = current_rating + player_rng.randint(0, 2)
+    
+    # Cap potential at 100
+    potential = min(100, potential)
+    
     # Create the player instance 
     player = Player(
         id=str(uuid.uuid4()),
@@ -515,6 +537,7 @@ def create_fantasy_player(name: str, position: Position) -> Player:
         attacking_work_rate=attacking_work_rate,
         defensive_work_rate=defensive_work_rate,
         traits=traits,
+        potential=potential,
         **base_stats
     )
     
