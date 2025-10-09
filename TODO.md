@@ -66,15 +66,15 @@ This document tracks features that are missing from Back of the Neural Net when 
 - ❌ Detailed player roles (ball-winning midfielder, target man, etc.)
 - ✅ Preferred foot
 - ✅ Weak foot rating
-- ❌ Skill moves rating
+- ✅ Skill moves rating
 - ✅ Work rate (attacking/defensive)
-- ❌ Player traits and specialties
+- ✅ Player traits and specialties
 - ❌ Hidden attributes (consistency, big match temperament, etc.)
 - ❌ Detailed injury history
 - ❌ Player media handling rating
 - ❌ Player potential rating (for youth development)
 - ❌ International caps and goals
-- ❌ Career statistics (goals, assists, appearances by season)
+- ✅ Career statistics (goals, assists, appearances by season)
 - ❌ Player awards and achievements
 - ❌ Preferred positions and versatility ratings
 
@@ -327,16 +327,16 @@ This document tracks features that are missing from Back of the Neural Net when 
 - ✅ Clean sheets
 - ✅ Form guide (last 5 matches)
 - ✅ Head-to-head records
-- ❌ Historical records
+- ✅ Historical records
 
 ### League Statistics
 - ✅ League tables
 - ✅ Top scorers (API endpoint added)
 - ✅ Top assisters
-- ❌ Most clean sheets
-- ❌ Disciplinary records
+- ✅ Most clean sheets
+- ✅ Disciplinary records
 - ❌ Best/worst defense
-- ❌ Historical champions
+- ✅ Historical champions
 
 ---
 
