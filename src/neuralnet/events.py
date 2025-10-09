@@ -105,6 +105,12 @@ class Foul(MatchEvent):
     foul_type: str  # "regular", "dangerous", "professional"
 
 
+class Offside(MatchEvent):
+    """Offside event."""
+    player: str
+    team: str
+
+
 class PenaltyAwarded(MatchEvent):
     """Penalty kick awarded event."""
     team: str
@@ -141,6 +147,9 @@ class MatchEnded(Event):
     away_fouls: Optional[int] = None
     home_penalties: Optional[int] = None  # Penalty kicks taken
     away_penalties: Optional[int] = None  # Penalty kicks taken
+    home_offsides: Optional[int] = None  # Offside calls
+    away_offsides: Optional[int] = None  # Offside calls
+    commentary: Optional[List[str]] = None  # Match commentary lines
 
 
 class SoftStateUpdated(Event):

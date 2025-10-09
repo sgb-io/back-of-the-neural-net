@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, List, Optional
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Position(str, Enum):
@@ -36,6 +36,8 @@ class WorkRate(str, Enum):
 
 class Player(BaseModel):
     """A football player."""
+    model_config = ConfigDict(validate_assignment=True)
+    
     id: str
     name: str
     position: Position
@@ -220,6 +222,9 @@ class Team(BaseModel):
     away_wins: int = Field(default=0, ge=0)
     away_draws: int = Field(default=0, ge=0)
     away_losses: int = Field(default=0, ge=0)
+    
+    # Form guide (last 5 matches)
+    recent_form: List[str] = Field(default_factory=list, description="Last 5 match results (W/D/L)")
     
     @property
     def points(self) -> int:

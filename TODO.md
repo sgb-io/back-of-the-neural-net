@@ -24,9 +24,9 @@ This document tracks features that are missing from Back of the Neural Net when 
 - ✅ Corner kicks
 - ❌ Free kicks (direct and indirect)
 - ✅ Penalty kicks
-- ❌ Offsides
+- ✅ Offsides
 - ✅ Fouls and foul statistics
-- ❌ Match commentary/text ticker
+- ✅ Match commentary/text ticker
 - ❌ Extra time and penalty shootouts
 - ❌ Weather conditions affecting match
 - ❌ Pitch conditions
@@ -325,7 +325,7 @@ This document tracks features that are missing from Back of the Neural Net when 
 - ✅ Home/away records (tracked with separate home/away W/D/L)
 - ✅ Winning/losing streaks
 - ✅ Clean sheets
-- ❌ Form guide
+- ✅ Form guide (last 5 matches)
 - ❌ Head-to-head records
 - ❌ Historical records
 

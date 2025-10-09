@@ -3,7 +3,7 @@
 import random
 from collections.abc import Generator
 
-from .entities import GameWorld, Match, Position, Team
+from .entities import GameWorld, Match, Player, Position, Team
 from .events import (
     CornerKick,
     Foul,
@@ -12,6 +12,7 @@ from .events import (
     KickOff,
     MatchEnded,
     MatchEvent,
+    Offside,
     PenaltyAwarded,
     RedCard,
     Substitution,
@@ -47,7 +48,13 @@ class MatchSimulator:
         self._away_fouls = 0
         self._home_penalties = 0
         self._away_penalties = 0
+        self._home_offsides = 0
+        self._away_offsides = 0
         self._possession_minutes = {"home": 0, "away": 0}
+        self._commentary: list[str] = []
+        
+        # Track player performance for ratings
+        self._player_stats: dict[str, dict] = {}
 
     def simulate(self) -> Generator[MatchEvent, None, None]:
         """Simulate a complete match, yielding events as they occur."""
@@ -103,7 +110,10 @@ class MatchSimulator:
             home_fouls=self._home_fouls,
             away_fouls=self._away_fouls,
             home_penalties=self._home_penalties,
-            away_penalties=self._away_penalties
+            away_penalties=self._away_penalties,
+            home_offsides=self._home_offsides,
+            away_offsides=self._away_offsides,
+            commentary=self._commentary if self._commentary else None
         )
 
     def _simulate_minute(self) -> list[MatchEvent]:
@@ -118,8 +128,13 @@ class MatchSimulator:
                 # Handle penalty which returns multiple events
                 if isinstance(event, list):
                     events.extend(event)
+                    # Generate commentary for each event
+                    for e in event:
+                        self._add_commentary(e)
                 else:
                     events.append(event)
+                    # Generate commentary for the event
+                    self._add_commentary(event)
         
         # Track shots that don't result in goals or other events (happens more frequently)
         if self.rng.random() < 0.15:  # 15% chance per minute for a shot attempt
@@ -139,6 +154,7 @@ class MatchSimulator:
             ("corner", 0.1),       # ~9 corners per match
             ("foul", 0.2),         # ~18 fouls per match
             ("penalty", 0.001),    # ~0.09 penalties per match (rare)
+            ("offside", 0.05),     # ~4.5 offsides per match
         ]
 
         total_weight = sum(weight for _, weight in choices)
@@ -170,6 +186,8 @@ class MatchSimulator:
             return self._create_foul_event()
         elif event_type == "penalty":
             return self._create_penalty_event()
+        elif event_type == "offside":
+            return self._create_offside_event()
 
         return None
 
@@ -547,6 +565,88 @@ class MatchSimulator:
         return events
 
 
+    def _add_commentary(self, event: MatchEvent) -> None:
+        """Generate commentary text for an event."""
+        minute = event.minute
+        
+        if isinstance(event, Goal):
+            team_name = self.home_team.name if event.team == self.home_team.id else self.away_team.name
+            if event.penalty:
+                self._commentary.append(f"{minute}' - GOAL! {event.scorer} converts the penalty for {team_name}!")
+            elif event.assist:
+                self._commentary.append(f"{minute}' - GOAL! {event.scorer} scores for {team_name}, assisted by {event.assist}!")
+            else:
+                self._commentary.append(f"{minute}' - GOAL! {event.scorer} finds the net for {team_name}!")
+        
+        elif isinstance(event, YellowCard):
+            team_name = self.home_team.name if event.team == self.home_team.id else self.away_team.name
+            self._commentary.append(f"{minute}' - Yellow card shown to {event.player} of {team_name}. {event.reason}")
+        
+        elif isinstance(event, RedCard):
+            team_name = self.home_team.name if event.team == self.home_team.id else self.away_team.name
+            self._commentary.append(f"{minute}' - RED CARD! {event.player} from {team_name} is sent off! {event.reason}")
+        
+        elif isinstance(event, Substitution):
+            team_name = self.home_team.name if event.team == self.home_team.id else self.away_team.name
+            self._commentary.append(f"{minute}' - Substitution for {team_name}: {event.player_on} replaces {event.player_off}")
+        
+        elif isinstance(event, Injury):
+            team_name = self.home_team.name if event.team == self.home_team.id else self.away_team.name
+            self._commentary.append(f"{minute}' - Injury concern for {team_name} as {event.player} goes down. {event.severity} {event.injury_type}")
+        
+        elif isinstance(event, CornerKick):
+            team_name = self.home_team.name if event.team == self.home_team.id else self.away_team.name
+            self._commentary.append(f"{minute}' - Corner kick awarded to {team_name}")
+        
+        elif isinstance(event, Foul):
+            team_name = self.home_team.name if event.team == self.home_team.id else self.away_team.name
+            self._commentary.append(f"{minute}' - Foul by {event.player} of {team_name} ({event.foul_type})")
+        
+        elif isinstance(event, PenaltyAwarded):
+            team_name = self.home_team.name if event.team == self.home_team.id else self.away_team.name
+            self._commentary.append(f"{minute}' - PENALTY to {team_name}! {event.reason}")
+        
+        elif isinstance(event, Offside):
+            team_name = self.home_team.name if event.team == self.home_team.id else self.away_team.name
+            self._commentary.append(f"{minute}' - Offside flag raised against {event.player} of {team_name}")
+
+
+    def _create_offside_event(self) -> Offside:
+        """Create an offside event."""
+        # Choose which team is offside based on attacking probability
+        home_strength = self._calculate_team_strength(self.home_team)
+        away_strength = self._calculate_team_strength(self.away_team)
+        total_strength = home_strength + away_strength
+        
+        if self.rng.random() < (home_strength / total_strength):
+            offside_team = self.home_team
+            self._home_offsides += 1
+        else:
+            offside_team = self.away_team
+            self._away_offsides += 1
+        
+        # Choose an attacking player to be offside
+        attackers = [
+            p for p in offside_team.players
+            if p.position in [Position.ST, Position.LW, Position.RW, Position.CAM]
+        ]
+        if not attackers:
+            attackers = [
+                p for p in offside_team.players if p.position != Position.GK
+            ]
+        
+        player = self.rng.choice(attackers) if attackers else offside_team.players[0]
+        
+        return Offside(
+            match_id=self.match.id,
+            minute=self.match.minute,
+            home_score=self.match.home_score,
+            away_score=self.match.away_score,
+            player=player.name,
+            team=offside_team.id
+        )
+
+
 class MatchEngine:
     """Orchestrates match simulation and event handling."""
 
@@ -624,6 +724,18 @@ class MatchEngine:
             # Update streaks
             self._update_streak(home_team, result="draw")
             self._update_streak(away_team, result="draw")
+        
+        # Update form guide (last 5 matches)
+        home_result = "W" if match.home_score > match.away_score else ("D" if match.home_score == match.away_score else "L")
+        away_result = "W" if match.away_score > match.home_score else ("D" if match.away_score == match.home_score else "L")
+        
+        home_team.recent_form.append(home_result)
+        if len(home_team.recent_form) > 5:
+            home_team.recent_form.pop(0)
+        
+        away_team.recent_form.append(away_result)
+        if len(away_team.recent_form) > 5:
+            away_team.recent_form.pop(0)
     
     def _update_streak(self, team: Team, result: str) -> None:
         """Update team's current and longest streaks."""
