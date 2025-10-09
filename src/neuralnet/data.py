@@ -346,6 +346,31 @@ def create_fantasy_player(name: str, position: Position) -> Player:
     else:
         preferred_foot = PreferredFoot.BOTH
     
+    # Determine weak foot rating (1-5 stars)
+    # Distribution: 10% get 1 star, 25% get 2 stars, 40% get 3 stars, 20% get 4 stars, 5% get 5 stars
+    # Players with "both" as preferred foot get better weak foot ratings
+    weak_foot_roll = player_rng.random()
+    if preferred_foot == PreferredFoot.BOTH:
+        # Two-footed players have better weak foot ratings
+        if weak_foot_roll < 0.30:
+            weak_foot = 4
+        elif weak_foot_roll < 0.70:
+            weak_foot = 5
+        else:
+            weak_foot = 3
+    else:
+        # Regular distribution
+        if weak_foot_roll < 0.10:
+            weak_foot = 1
+        elif weak_foot_roll < 0.35:
+            weak_foot = 2
+        elif weak_foot_roll < 0.75:
+            weak_foot = 3
+        elif weak_foot_roll < 0.95:
+            weak_foot = 4
+        else:
+            weak_foot = 5
+    
     # Determine work rates based on position
     if position == Position.ST:
         # Strikers tend to have high attacking, low/medium defending
@@ -406,6 +431,7 @@ def create_fantasy_player(name: str, position: Position) -> Player:
         contract_years_remaining=contract_years,
         salary=salary,
         preferred_foot=preferred_foot,
+        weak_foot=weak_foot,
         attacking_work_rate=attacking_work_rate,
         defensive_work_rate=defensive_work_rate,
         **base_stats

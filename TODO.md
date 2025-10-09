@@ -22,7 +22,7 @@ This document tracks features that are missing from Back of the Neural Net when 
 - ✅ Possession tracking
 - ✅ Shot statistics (on target, off target)
 - ✅ Corner kicks
-- ❌ Free kicks (direct and indirect)
+- ✅ Free kicks (direct and indirect)
 - ✅ Penalty kicks
 - ✅ Offsides
 - ✅ Fouls and foul statistics
@@ -65,7 +65,7 @@ This document tracks features that are missing from Back of the Neural Net when 
 - 🚧 Player development (limited)
 - ❌ Detailed player roles (ball-winning midfielder, target man, etc.)
 - ✅ Preferred foot
-- ❌ Weak foot rating
+- ✅ Weak foot rating
 - ❌ Skill moves rating
 - ✅ Work rate (attacking/defensive)
 - ❌ Player traits and specialties
@@ -312,10 +312,10 @@ This document tracks features that are missing from Back of the Neural Net when 
 - ❌ Season statistics (goals, assists, appearances)
 - ❌ Career statistics
 - ❌ Records (most goals in season, etc.)
-- ❌ Player ratings per match
+- ✅ Player ratings per match
 - ❌ Average ratings
 - ❌ Form guide (last 5/10 games)
-- ❌ Head-to-head statistics
+- ✅ Head-to-head statistics
 
 ### Team Statistics
 - ✅ League position
@@ -326,7 +326,7 @@ This document tracks features that are missing from Back of the Neural Net when 
 - ✅ Winning/losing streaks
 - ✅ Clean sheets
 - ✅ Form guide (last 5 matches)
-- ❌ Head-to-head records
+- ✅ Head-to-head records
 - ❌ Historical records
 
 ### League Statistics

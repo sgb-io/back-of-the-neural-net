@@ -1319,6 +1319,112 @@ async def get_league_top_assisters(league_id: str, limit: int = 10) -> dict:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/teams/{team_id}/head-to-head")
+async def get_team_head_to_head(team_id: str):
+    """Get head-to-head records for a team against all opponents."""
+    try:
+        if not orchestrator.world:
+            raise HTTPException(status_code=400, detail="World not initialized")
+        
+        team = orchestrator.world.get_team_by_id(team_id)
+        if not team:
+            raise HTTPException(status_code=404, detail=f"Team {team_id} not found")
+        
+        # Build head-to-head records with opponent names
+        h2h_records = []
+        for opponent_id, record in team.head_to_head.items():
+            opponent = orchestrator.world.get_team_by_id(opponent_id)
+            if opponent:
+                h2h_records.append({
+                    "opponent_id": opponent_id,
+                    "opponent_name": opponent.name,
+                    "wins": record["W"],
+                    "draws": record["D"],
+                    "losses": record["L"],
+                    "matches_played": record["W"] + record["D"] + record["L"]
+                })
+        
+        # Sort by matches played (descending)
+        h2h_records.sort(key=lambda x: x["matches_played"], reverse=True)
+        
+        return {
+            "team_id": team_id,
+            "team_name": team.name,
+            "head_to_head": h2h_records
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/matches/{match_id}/player-ratings")
+async def get_match_player_ratings(match_id: str):
+    """Get player ratings for a specific match."""
+    try:
+        if not orchestrator.world:
+            raise HTTPException(status_code=400, detail="World not initialized")
+        
+        # Find the MatchEnded event for this match
+        all_events = orchestrator.event_store.get_events()
+        match_ended = None
+        for event in all_events:
+            if hasattr(event, "match_id") and event.match_id == match_id:
+                if event.event_type == "MatchEnded":
+                    match_ended = event
+                    break
+        
+        if not match_ended:
+            raise HTTPException(status_code=404, detail=f"Match {match_id} not found or not finished")
+        
+        if not match_ended.player_ratings:
+            return {
+                "match_id": match_id,
+                "player_ratings": []
+            }
+        
+        # Build player ratings with player details
+        ratings_list = []
+        for player_id, rating in match_ended.player_ratings.items():
+            # Find player in world
+            player = None
+            team = None
+            for t in orchestrator.world.teams.values():
+                for p in t.players:
+                    if p.id == player_id:
+                        player = p
+                        team = t
+                        break
+                if player:
+                    break
+            
+            if player and team:
+                ratings_list.append({
+                    "player_id": player_id,
+                    "player_name": player.name,
+                    "team_id": team.id,
+                    "team_name": team.name,
+                    "position": player.position.value,
+                    "rating": rating
+                })
+        
+        # Sort by rating (descending)
+        ratings_list.sort(key=lambda x: x["rating"], reverse=True)
+        
+        return {
+            "match_id": match_id,
+            "home_team": match_ended.home_team,
+            "away_team": match_ended.away_team,
+            "home_score": match_ended.home_score,
+            "away_score": match_ended.away_score,
+            "player_ratings": ratings_list
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000, reload=True)
