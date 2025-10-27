@@ -9,10 +9,16 @@ This script demonstrates the new features implemented in round 7:
 """
 
 import asyncio
-from src.neuralnet.data import create_sample_world
-from src.neuralnet.orchestrator import GameOrchestrator
-from src.neuralnet.events import EventStore
-from src.neuralnet.entities import PitchCondition
+import sys
+from pathlib import Path
+
+# Add src to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+
+from neuralnet.data import create_sample_world
+from neuralnet.orchestrator import GameOrchestrator
+from neuralnet.events import EventStore
+from neuralnet.entities import PitchCondition
 
 
 async def main():

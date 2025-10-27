@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 """Demo script for TODO basket round 6 features."""
 
-from src.neuralnet.data import create_sample_world
-from src.neuralnet.entities import Weather, InjuryType, InjuryRecord, PlayerAward, Match
-from src.neuralnet.simulation import MatchSimulator
+import sys
+from pathlib import Path
+
+# Add src to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+
+from neuralnet.data import create_sample_world
+from neuralnet.entities import Weather, InjuryType, InjuryRecord, PlayerAward, Match
+from neuralnet.simulation import MatchSimulator
 import uuid
 
 

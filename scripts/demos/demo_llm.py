@@ -7,7 +7,7 @@ import asyncio
 from pathlib import Path
 
 # Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from neuralnet.config import get_config, validate_llm_config
 from neuralnet.orchestrator import GameOrchestrator
