@@ -82,6 +82,16 @@ class InjuryType(str, Enum):
     BROKEN_BONE = "Broken Bone"
 
 
+class PitchCondition(str, Enum):
+    """Pitch/field conditions for matches."""
+    EXCELLENT = "Excellent"
+    GOOD = "Good"
+    AVERAGE = "Average"
+    WORN = "Worn"
+    POOR = "Poor"
+    WATERLOGGED = "Waterlogged"
+
+
 class InjuryRecord(BaseModel):
     """Record of a player injury."""
     injury_type: InjuryType
@@ -146,6 +156,7 @@ class Player(BaseModel):
     
     # Career statistics by season
     season_stats: Dict[int, "PlayerSeasonStats"] = Field(default_factory=dict, description="Statistics by season")
+    match_ratings: List[float] = Field(default_factory=list, description="Historical match ratings for average calculation")
     
     # Potential rating (for development/youth)
     potential: int = Field(default=75, ge=1, le=100, description="Maximum potential rating the player can reach")
@@ -244,6 +255,13 @@ class Player(BaseModel):
         
         calculated_value = int(base_value * age_factor * reputation_factor * form_factor * injury_factor)
         return max(50000, calculated_value)  # Minimum £50k value
+    
+    @property
+    def average_rating(self) -> float:
+        """Calculate average match rating from historical ratings."""
+        if not self.match_ratings:
+            return 0.0
+        return sum(self.match_ratings) / len(self.match_ratings)
 
 
 class Team(BaseModel):
@@ -254,6 +272,8 @@ class Team(BaseModel):
     
     # Hard state
     players: List[Player] = Field(default_factory=list)
+    captain_id: Optional[str] = Field(default=None, description="Player ID of team captain")
+    vice_captain_id: Optional[str] = Field(default=None, description="Player ID of vice-captain")
     
     # Soft state (LLM-driven)
     team_morale: int = Field(default=50, ge=1, le=100)
@@ -407,6 +427,7 @@ class Match(BaseModel):
     
     # Match atmosphere
     weather: "Weather" = Field(default=Weather.CLOUDY, description="Weather conditions during the match")
+    pitch_condition: "PitchCondition" = Field(default=PitchCondition.GOOD, description="Condition of the playing surface")
     attendance: int = Field(default=0, ge=0, description="Number of fans attending")
     atmosphere_rating: int = Field(default=50, ge=1, le=100, description="Stadium atmosphere quality")
 
@@ -423,6 +444,7 @@ class League(BaseModel):
     # Historical records
     champions_by_season: Dict[int, str] = Field(default_factory=dict, description="Season -> Champion team ID")
     top_scorers_by_season: Dict[int, Dict[str, Any]] = Field(default_factory=dict, description="Season -> {player_id, goals, team_id}")
+    season_records: Dict[int, Dict[str, Any]] = Field(default_factory=dict, description="Season -> various records (most goals, best defense, etc.)")
     
     def is_season_complete(self) -> bool:
         """Check if the current season is complete."""

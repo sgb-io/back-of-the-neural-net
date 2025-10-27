@@ -220,6 +220,28 @@ def create_fantasy_team(team_id: str, team_name: str, league: str) -> Team:
             player = create_fantasy_player(player_name, position)
             team.players.append(player)
     
+    # Assign captain and vice-captain (choose from experienced, high-reputation players)
+    # Prefer midfielders and defenders for captaincy
+    captain_candidates = [
+        p for p in team.players 
+        if p.position in [Position.CM, Position.CB, Position.CAM] and p.age >= 25
+    ]
+    
+    if not captain_candidates:
+        # Fall back to any experienced player
+        captain_candidates = [p for p in team.players if p.age >= 25]
+    
+    if captain_candidates:
+        # Captain is the player with highest overall rating among candidates
+        captain = max(captain_candidates, key=lambda p: p.overall_rating)
+        team.captain_id = captain.id
+        
+        # Vice-captain is second-highest rated (excluding captain)
+        vice_captain_candidates = [p for p in captain_candidates if p.id != captain.id]
+        if vice_captain_candidates:
+            vice_captain = max(vice_captain_candidates, key=lambda p: p.overall_rating)
+            team.vice_captain_id = vice_captain.id
+    
     return team
 
 
