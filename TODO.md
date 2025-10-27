@@ -29,7 +29,7 @@ This document tracks features that are missing from Back of the Neural Net when 
 - ✅ Match commentary/text ticker
 - ❌ Extra time and penalty shootouts
 - ✅ Weather conditions affecting match
-- ❌ Pitch conditions
+- ✅ Pitch conditions
 - ✅ Crowd attendance and atmosphere
 - 🚫 2D/3D match visualization
 
@@ -92,7 +92,7 @@ This document tracks features that are missing from Back of the Neural Net when 
 - ❌ Player tutoring/mentoring
 - ❌ Squad rotation policies
 - ❌ Player roles assignment
-- ❌ Captaincy and vice-captaincy
+- ✅ Captaincy and vice-captaincy
 - ❌ Player rest management
 - ❌ Player happiness with playing time
 - ❌ Squad cohesion and dynamics
@@ -311,10 +311,10 @@ This document tracks features that are missing from Back of the Neural Net when 
 - 🚧 Basic match performance tracking
 - ❌ Season statistics (goals, assists, appearances)
 - ❌ Career statistics
-- ❌ Records (most goals in season, etc.)
+- ✅ Season records infrastructure (most goals in season, etc.)
 - ✅ Player ratings per match
-- ❌ Average ratings
-- ❌ Form guide (last 5/10 games)
+- ✅ Average ratings
+- ✅ Form guide (last 5 matches W/D/L)
 - ✅ Head-to-head statistics
 
 ### Team Statistics

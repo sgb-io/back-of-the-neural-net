@@ -753,6 +753,9 @@ class MatchEngine:
         # Update player form based on match performance
         self._update_player_form_after_match(events, match)
         
+        # Update player match ratings history
+        self._update_player_ratings_history(events, match)
+        
         # Update match-based progression (fitness costs, suspension countdown)
         self.world.advance_match_progression(events)
 
@@ -954,3 +957,32 @@ class MatchEngine:
             # Apply form change with bounds
             new_form = max(1, min(100, player.form + form_change))
             player.form = new_form
+    
+    def _update_player_ratings_history(self, events: list, match: Match) -> None:
+        """Update player match ratings history for average calculation."""
+        # Find MatchEnded event which contains player ratings
+        match_ended_event = None
+        for event in events:
+            if event.event_type == "MatchEnded":
+                match_ended_event = event
+                break
+        
+        if not match_ended_event or not hasattr(match_ended_event, 'player_ratings'):
+            return
+        
+        player_ratings = match_ended_event.player_ratings
+        if not player_ratings:
+            return
+        
+        # Update match_ratings for each player
+        home_team = self.world.get_team_by_id(match.home_team_id)
+        away_team = self.world.get_team_by_id(match.away_team_id)
+        
+        if not home_team or not away_team:
+            return
+        
+        for team in [home_team, away_team]:
+            for player in team.players:
+                if player.id in player_ratings:
+                    rating = player_ratings[player.id]
+                    player.match_ratings.append(rating)

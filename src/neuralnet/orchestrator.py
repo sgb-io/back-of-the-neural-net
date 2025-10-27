@@ -8,7 +8,7 @@ from typing import List, Optional, Dict, Any
 
 from .config import get_config, Config
 from .data import create_sample_world
-from .entities import GameWorld, League, Match, Weather
+from .entities import GameWorld, League, Match, Weather, PitchCondition
 from .events import EventStore, MatchEnded, MatchScheduled, MatchStarted, SoftStateUpdated, WorldInitialized, MediaStoryPublished
 from .llm import BrainOrchestrator, MockLLMProvider, MediaStory
 from .llm_mcp import MockToolsLLMProvider, ToolsLLMProvider
@@ -164,6 +164,52 @@ class GameOrchestrator:
                 else:
                     weather = Weather.SNOWY
                 
+                # Pitch condition: influenced by weather and matchday (later in season = more worn)
+                # Distribution: 25% Excellent, 35% Good, 25% Average, 10% Worn, 4% Poor, 1% Waterlogged
+                pitch_roll = match_rng.random()
+                
+                # Weather affects pitch condition
+                if weather == Weather.RAINY:
+                    # More chance of waterlogged/poor in rain
+                    if pitch_roll < 0.10:
+                        pitch_condition = PitchCondition.EXCELLENT
+                    elif pitch_roll < 0.30:
+                        pitch_condition = PitchCondition.GOOD
+                    elif pitch_roll < 0.55:
+                        pitch_condition = PitchCondition.AVERAGE
+                    elif pitch_roll < 0.75:
+                        pitch_condition = PitchCondition.WORN
+                    elif pitch_roll < 0.90:
+                        pitch_condition = PitchCondition.POOR
+                    else:
+                        pitch_condition = PitchCondition.WATERLOGGED
+                elif weather == Weather.SNOWY:
+                    # Snow mostly causes poor/worn conditions
+                    if pitch_roll < 0.05:
+                        pitch_condition = PitchCondition.EXCELLENT
+                    elif pitch_roll < 0.20:
+                        pitch_condition = PitchCondition.GOOD
+                    elif pitch_roll < 0.45:
+                        pitch_condition = PitchCondition.AVERAGE
+                    elif pitch_roll < 0.75:
+                        pitch_condition = PitchCondition.WORN
+                    else:
+                        pitch_condition = PitchCondition.POOR
+                else:
+                    # Standard distribution in good weather
+                    if pitch_roll < 0.25:
+                        pitch_condition = PitchCondition.EXCELLENT
+                    elif pitch_roll < 0.60:
+                        pitch_condition = PitchCondition.GOOD
+                    elif pitch_roll < 0.85:
+                        pitch_condition = PitchCondition.AVERAGE
+                    elif pitch_roll < 0.95:
+                        pitch_condition = PitchCondition.WORN
+                    elif pitch_roll < 0.99:
+                        pitch_condition = PitchCondition.POOR
+                    else:
+                        pitch_condition = PitchCondition.WATERLOGGED
+                
                 # Calculate attendance based on stadium capacity, reputation, and match importance
                 if home_team:
                     base_attendance = int(home_team.stadium_capacity * 0.75)  # 75% base attendance
@@ -207,6 +253,7 @@ class GameOrchestrator:
                     matchday=matchday,
                     season=league.season,
                     weather=weather,
+                    pitch_condition=pitch_condition,
                     attendance=attendance,
                     atmosphere_rating=atmosphere_rating
                 )
