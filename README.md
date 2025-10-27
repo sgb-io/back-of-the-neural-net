@@ -190,8 +190,6 @@ back-of-the-neural-net/
 │   ├── src/                # React components
 │   └── public/             # Static assets
 ├── tests/                  # Test suite
-├── scripts/demos/          # Demo and example scripts
-├── docs/archive/           # Historical implementation docs
 ├── main.py                 # CLI entry point
 └── README.md               # This file
 ```
@@ -215,21 +213,6 @@ python tests/simple_test.py
 
 # Run main test command
 python main.py test
-```
-
-### Demo Scripts
-
-Explore features interactively with demo scripts:
-
-```bash
-# Basic demos
-python scripts/demos/demo.py                # Basic simulation
-python scripts/demos/demo_llm.py            # LLM integration demo
-python scripts/demos/demo_tools.py          # Tools demonstration
-
-# Feature-specific demos
-python scripts/demos/demo_todo_features.py  # All implemented features
-python scripts/demos/demo_todo_basket.py    # Feature basket showcase
 ```
 
 ## Future Enhancements
@@ -257,7 +240,6 @@ See [TODO.md](TODO.md) for a comprehensive list of features compared to modern F
 - **[README.md](README.md)** - This file (getting started, features, architecture)
 - **[TODO.md](TODO.md)** - Comprehensive feature comparison with FM
 - **[AGENTS.md](AGENTS.md)** - Initial design philosophy and principles
-- **[docs/archive/](docs/archive/)** - Historical implementation summaries
 
 ## Contributing
 
